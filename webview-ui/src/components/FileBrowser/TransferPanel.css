@@ -1,0 +1,72 @@
+.transfers {
+  flex-shrink: 0;
+  max-height: 40%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.transfers-header { display: flex; align-items: center; padding: 2px 4px 2px 0; }
+.transfers-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+  background: transparent;
+}
+.transfers-toggle:hover { background: transparent; }
+.transfers-badge {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--vscode-badge-foreground, #fff);
+  background: var(--vscode-badge-background, #4d4d4d);
+}
+.transfers-list { list-style: none; margin: 0; padding: 0 0 4px; overflow-y: auto; }
+
+.transfer { padding: 4px 8px 5px; }
+.transfer + .transfer { border-top: 1px solid var(--vscode-panel-border); }
+.transfer-line { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.transfer-line > .codicon { font-size: 14px; color: var(--vscode-icon-foreground); }
+.transfer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transfer-status { font-size: 11px; color: var(--vscode-descriptionForeground); white-space: nowrap; }
+.transfer.done .transfer-status { color: var(--vscode-charts-green, #388a34); }
+.transfer.error .transfer-status, .transfer.error .transfer-detail { color: var(--vscode-errorForeground); }
+.transfer.cancelled .transfer-name { opacity: 0.7; }
+.transfer-detail {
+  margin-left: 20px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.transfer-detail:empty { display: none; }
+
+.transfer-bar {
+  height: 4px;
+  margin: 3px 0 2px 20px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--vscode-progressBar-background, #0e70c0);
+  background: color-mix(in srgb, var(--vscode-progressBar-background, #0e70c0) 20%, transparent);
+}
+.transfer-bar > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--vscode-progressBar-background, #0e70c0);
+  transition: width 0.15s linear;
+}
+.transfer-bar.indeterminate > div { width: 30% !important; animation: transfer-indeterminate 1.2s ease-in-out infinite; }
+@keyframes transfer-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}

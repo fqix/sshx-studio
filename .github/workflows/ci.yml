@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  # Lets release.yml reuse the build so the published VSIX comes from the same pipeline.
+  workflow_call:
+    inputs:
+      package:
+        description: Upload the VSIX artifact (release only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One job per platform whose prebuilt better-sqlite3 binary ships in the VSIX, so each
+          # binary is actually loaded and exercised. `e2e` also runs the extension in a real VS Code.
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: macos-latest
+            target: darwin-arm64
+            e2e: true
+          - runner: ubuntu-latest
+            target: linux-x64
+            e2e: true
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+          - runner: ubuntu-latest
+            target: linuxmusl-x64
+            container: node:22-alpine
+          - runner: windows-latest
+            target: win32-x64
+            e2e: true
+          # No hosted runners for win32-arm64, and JavaScript actions don't run in arm64 Alpine
+          # containers: those two binaries are verified by header in the package job.
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: ${{ !matrix.container }}
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Install dependencies
+        # Install strictly from the committed lockfiles. better-sqlite3 ships prebuilt N-API
+        # binaries, so no install scripts or C++ toolchain are needed; only esbuild needs its
+        # install script.
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund --prefix webview-ui
+          npm rebuild esbuild
+          npm rebuild esbuild --prefix webview-ui
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Check translations
+        run: node scripts/l10n-check.mjs
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Run end-to-end tests (VS Code)
+        if: matrix.e2e && runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e
+
+      - name: Run end-to-end tests (VS Code)
+        if: matrix.e2e && runner.os != 'Linux'
+        run: npm run test:e2e
+
+  package:
+    name: package
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund --prefix webview-ui
+          npm rebuild esbuild
+          npm rebuild esbuild --prefix webview-ui
+
+      # One universal VSIX: dist/native holds the SQLite binary for every platform and
+      # src/storage/nativeBinding.ts picks the right one at runtime.
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Verify VSIX contents
+        run: |
+          vsix="$(ls sshx-studio-*.vsix)"
+          mkdir -p vsix-check && unzip -q "$vsix" -d vsix-check
+          node scripts/check-native.mjs --all vsix-check/extension/dist/native
+          test -f vsix-check/extension/dist/extension.js
+          test -f vsix-check/extension/dist/webview/assets/index.js
+          if unzip -l "$vsix" | grep -E '\.map$|node_modules/'; then
+            echo "::error::VSIX contains source maps or node_modules"
+            exit 1
+          fi
+
+      # Only release.yml consumes the VSIX artifact; push and PR runs skip the upload.
+      - name: Upload VSIX
+        if: inputs.package
+        uses: actions/upload-artifact@v7
+        with:
+          name: sshx-studio-vsix
+          path: sshx-studio-*.vsix
+          if-no-files-found: error
+          retention-days: 14

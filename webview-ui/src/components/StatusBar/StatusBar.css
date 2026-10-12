@@ -1,0 +1,20 @@
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-descriptionForeground);
+}
+.status-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--vscode-charts-yellow, #cca700); }
+.status-bar.connected .dot { background: var(--vscode-charts-green, #388a34); }
+.status-bar.error .dot,
+.status-bar.disconnected .dot { background: var(--vscode-charts-red, #e51400); }
+.status-bar .text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-bar .reconnect {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font-size: 11px;
+}
+.status-bar .reconnect:hover { background: var(--vscode-button-hoverBackground); }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Monochrome activity bar icon (VS Code uses it as a mask): terminal window, prompt, arrow X. -->
+  <rect x="2" y="3.5" width="20" height="17" rx="3"/>
+  <path d="M6 9.5 L9 12 L6 14.5"/>
+  <path d="M10.5 15.5 H12.5"/>
+  <path d="M14 16.5 L18.5 9"/>
+  <path d="M16.5 9 H18.5 V11"/>
+  <path d="M14 9 L18.5 16.5"/>
+  <path d="M18.5 14.5 V16.5 H16.5"/>
+</svg>

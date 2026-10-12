@@ -1,0 +1,139 @@
+.he-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 24px 32px;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+html:has(.he-page),
+body:has(.he-page) { overflow: auto; }
+.he-loading { color: var(--vscode-descriptionForeground); }
+.he-page h1 { font-size: 20px; font-weight: 600; margin: 4px 0 16px; }
+.he-section { margin-bottom: 20px; }
+.he-section h2 {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground);
+  margin: 0 0 10px;
+}
+details.he-section > summary { cursor: pointer; margin-bottom: 6px; }
+details.he-section > summary h2 { display: inline-block; margin: 0; }
+
+.he-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; flex: 1; min-width: 0; }
+.he-label { font-weight: 600; }
+.he-hint, .he-note { font-size: 12px; color: var(--vscode-descriptionForeground); }
+.he-note { margin: 4px 0 10px; }
+.he-note.success { color: var(--vscode-charts-green, #388a34); }
+.he-error { font-size: 12px; color: var(--vscode-errorForeground); }
+.he-field.invalid input,
+.he-field.invalid textarea { border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground)); }
+
+.he-page input:not([type='checkbox']),
+.he-page textarea,
+.he-page select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 2px;
+  outline: none;
+}
+.he-page textarea { font-family: var(--vscode-editor-font-family); font-size: 12px; resize: vertical; }
+.he-page input:focus, .he-page textarea:focus, .he-page select:focus { border-color: var(--vscode-focusBorder); }
+.he-page input:disabled { opacity: 0.5; }
+.he-port { width: 90px !important; }
+.he-row { display: flex; gap: 12px; align-items: flex-start; }
+.he-row .he-field:has(.he-port) { flex: 0 0 auto; }
+.he-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.he-toggle { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; cursor: pointer; }
+.he-toggle input { margin-top: 2px; }
+.he-toggle > span { display: flex; flex-direction: column; gap: 2px; }
+.he-input-with-button { display: flex; gap: 6px; }
+.he-inline-button { margin-top: 22px; }
+
+.he-page button {
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.he-page button:hover { background: var(--vscode-button-hoverBackground); }
+.he-page button.secondary {
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31));
+}
+.he-page button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.5)); }
+.he-page button:disabled { opacity: 0.5; cursor: default; }
+
+.he-segmented, .he-tabs {
+  display: inline-flex;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.he-page .he-segmented button, .he-page .he-tabs button {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-foreground);
+  padding: 4px 12px;
+}
+.he-page .he-segmented button + button, .he-page .he-tabs button + button { border-left: 1px solid var(--vscode-panel-border); }
+.he-page .he-segmented button.active, .he-page .he-tabs button.active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+.he-tabs { margin: 4px 0 10px; }
+
+.he-pubkey { display: flex; gap: 6px; align-items: flex-start; }
+.he-pubkey code {
+  flex: 1;
+  min-width: 0;
+  padding: 6px;
+  font-size: 11px;
+  word-break: break-all;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-input-background));
+  border-radius: 2px;
+}
+.he-banner {
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border-radius: 2px;
+  color: var(--vscode-errorForeground);
+  background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+}
+.he-footer { display: flex; gap: 8px; padding-top: 4px; }
+.he-footer button { display: inline-flex; align-items: center; gap: 6px; }
+.he-test-result {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 1px solid;
+}
+.he-test-result .codicon { font-size: 16px; margin-top: 1px; }
+.he-test-result.ok {
+  border-color: var(--vscode-testing-iconPassed, #388a34);
+  background: color-mix(in srgb, var(--vscode-testing-iconPassed, #388a34) 10%, transparent);
+}
+.he-test-result.ok .codicon { color: var(--vscode-testing-iconPassed, #388a34); }
+.he-test-result.failed {
+  border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+  background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
+}
+.he-test-result.failed .codicon { color: var(--vscode-errorForeground); }

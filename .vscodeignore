@@ -1,0 +1,17 @@
+# Ship only the built extension. Everything is excluded unless re-included below.
+**
+!dist/extension.js
+!dist/native/*.node
+!dist/webview/index.html
+!dist/webview/assets/*.js
+!dist/webview/assets/*.css
+!dist/webview/assets/*.ttf
+!l10n/**
+!package.json
+!package.nls*.json
+!README*.md
+!CHANGELOG.md
+!LICENSE
+!media/icon.png
+!media/icon.svg
+!media/activitybar.svg

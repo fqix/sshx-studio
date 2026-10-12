@@ -1,0 +1,72 @@
+.file-browser {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--vscode-sideBar-background);
+}
+
+.fb-toolbar { display: flex; align-items: center; gap: 2px; padding: 4px; border-bottom: 1px solid var(--vscode-panel-border); }
+.fb-toolbar .spacer { flex: 1; }
+
+.fb-path {
+  margin: 4px;
+  padding: 3px 6px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  outline: none;
+}
+.fb-path:focus { border-color: var(--vscode-focusBorder); }
+
+.fb-list { flex: 1; overflow-y: auto; outline: none; user-select: none; padding-bottom: 20px; }
+.fb-row { display: flex; align-items: center; gap: 6px; padding: 2px 8px; cursor: default; white-space: nowrap; }
+.fb-row:hover { background: var(--vscode-list-hoverBackground); }
+.fb-row.selected { background: var(--vscode-list-inactiveSelectionBackground); }
+.fb-list:focus .fb-row.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.fb-row .icon { width: 16px; text-align: center; font-size: 14px; pointer-events: none; color: var(--vscode-icon-foreground); }
+.fb-row .codicon-folder { color: var(--vscode-symbolIcon-folderForeground, var(--vscode-icon-foreground)); }
+.fb-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.fb-row .size { color: var(--vscode-descriptionForeground); font-size: 11px; pointer-events: none; }
+.fb-placeholder { padding: 8px; color: var(--vscode-descriptionForeground); font-style: italic; }
+
+.fb-error {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--vscode-errorForeground);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.fb-drop-hint {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 85%, transparent);
+  pointer-events: none;
+  font-size: 14px;
+}
+.file-browser.dragging .fb-drop-hint { display: flex; }
+
+.context-menu {
+  position: fixed;
+  z-index: 10;
+  min-width: 160px;
+  padding: 4px 0;
+  background: var(--vscode-menu-background);
+  color: var(--vscode-menu-foreground);
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+  border-radius: 5px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+}
+.context-menu div { padding: 4px 14px; cursor: pointer; }
+.context-menu div:hover { background: var(--vscode-menu-selectionBackground); color: var(--vscode-menu-selectionForeground); }
+.context-menu .danger { color: var(--vscode-errorForeground); }
