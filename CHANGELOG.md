@@ -4,7 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-First release (0.1.0).
+## [0.1.0] - 2026-10-12
+
+First release.
 
 ### Added
 
@@ -20,3 +22,6 @@ First release (0.1.0).
 - ProxyJump chains, ProxyCommand and `known_hosts` verification.
 - English and Simplified Chinese.
 - One VSIX for macOS, Linux (glibc and musl) and Windows on x64 and arm64.
+
+[Unreleased]: https://github.com/fqix/sshx-studio/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/fqix/sshx-studio/releases/tag/v0.1.0
