@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/fqix/sshx-studio/actions/workflows/ci.yml"><img src="https://github.com/fqix/sshx-studio/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=fqix.sshx-studio"><img src="https://img.shields.io/visual-studio-marketplace/v/fqix.sshx-studio?label=VS%20Marketplace" alt="VS Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=fqix.sshx-studio"><img src="https://vsmarketplacebadges.dev/version-short/fqix.sshx-studio.svg?label=VS%20Marketplace&color=0066b8" alt="VS Marketplace"></a>
   <a href="https://open-vsx.org/extension/fqix/sshx-studio"><img src="https://img.shields.io/open-vsx/v/fqix/sshx-studio?label=Open%20VSX" alt="Open VSX"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
 </p>
