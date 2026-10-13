@@ -220,6 +220,28 @@ Host *
   (await connect(storedKey, 'direct', noPrompt)).dispose();
   console.log('ok  stored private key + passphrase');
 
+  // Unreachable agent (stale SSH_AUTH_SOCK) and forwarding to it: skipped, falls back to password.
+  const logs: string[] = [];
+  const logging: Prompter = { ...prompter, log: (m) => logs.push(m) };
+  const deadAgent = path.join(tmp, 'no-agent.sock');
+  const staleAgent: HostResolver = {
+    resolve: (a) => ({ ...cfg.resolve(a), identitiesOnly: false, identityAgent: deadAgent, forwardAgent: true }),
+  };
+  (await connect(staleAgent, 'direct', logging)).dispose();
+  assert.ok(logs.some((l) => l.includes('SSH agent unavailable')), 'agent error is logged, not fatal');
+  assert.ok(logs.includes('[direct] Trying SSH agent keys'));
+  assert.ok(logs.includes('[direct] Trying password'), 'falls back to password after the agent');
+  assert.ok(!logs.includes('[direct] Server rejected SSH agent keys'), 'agent never reached the server');
+  assert.ok(logs.includes('[direct] Server rejected keyboard-interactive; server allows: password, publickey'));
+  console.log('ok  unreachable agent skipped');
+
+  // Cancelling the password prompt aborts and is not reported as running out of methods.
+  logs.length = 0;
+  const cancel: Prompter = { ...logging, password: async () => undefined };
+  await assert.rejects(connect(cfg, 'direct', cancel));
+  assert.ok(!logs.some((l) => l.includes('No compatible authentication methods remain')));
+  console.log('ok  password prompt cancel');
+
   // Port forwards: -L and -R through one shared connection.
   const echo = await echoServer();
   const forwards = new ForwardManager(cfg, () => ({ prompter, onConnected: async () => {} }), () => {});

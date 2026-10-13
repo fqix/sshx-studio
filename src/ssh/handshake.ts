@@ -30,6 +30,8 @@ export class PromptTracker {
 /**
  * `client.connect()` and wait for 'ready'. Times out after `timeoutMs` of handshake time,
  * not counting time spent in prompts. `describeError` can enrich failures (e.g. ProxyCommand stderr).
+ * ssh2 continues with the next auth method after an agent error (`level: 'agent'`, e.g. a stale
+ * SSH_AUTH_SOCK), so those go to `onAgentError` instead of failing the connection.
  */
 export function handshake(
   client: Client,
@@ -37,6 +39,7 @@ export function handshake(
   timeoutMs: number,
   tracker: PromptTracker,
   describeError: (e: Error) => string = (e) => e.message,
+  onAgentError: (e: Error) => void = () => {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let elapsed = 0;
@@ -46,16 +49,18 @@ export function handshake(
       if (elapsed >= timeoutMs) fail(new Error(t('Timed out after {0}s waiting for handshake', timeoutMs / 1000)));
     }, TICK_MS);
 
+    const onError = (e: Error & { level?: string }) => (e.level === 'agent' ? onAgentError(e) : fail(e));
     const fail = (e: Error) => {
       clearInterval(timer);
+      client.off('error', onError);
       reject(new Error(describeError(e)));
     };
     client.once('ready', () => {
       clearInterval(timer);
-      client.off('error', fail);
+      client.off('error', onError);
       resolve();
     });
-    client.once('error', fail);
+    client.on('error', onError);
     client.connect({ ...config, readyTimeout: 0 });
   });
 }
