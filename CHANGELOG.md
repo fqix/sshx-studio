@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- **Generate key pair** in the host editor could produce an unusable Ed25519 key (about 1 in 256 times) because of a bug in the ssh2 key generator. Malformed keys are now discarded and generated again.
+
 ## [0.1.0] - 2026-10-12
 
 First release.

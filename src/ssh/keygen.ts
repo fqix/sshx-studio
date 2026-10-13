@@ -10,10 +10,20 @@ export interface KeyPair {
   publicKey: string;
 }
 
+/**
+ * ssh2's keygen strips every leading zero byte from an Ed25519 public key, not only the
+ * BIT STRING padding, so about 1 in 256 pairs it returns are malformed (neither half parses).
+ * Generate again until the public key parses; a rejected key is simply discarded.
+ */
+const KEYGEN_ATTEMPTS = 16;
+
 export function generateKeyPair(type: KeyType, comment: string, passphrase?: string): KeyPair {
   const enc = passphrase ? { passphrase, cipher: 'aes256-ctr' } : {};
-  const pair = type === 'rsa' ? utils.generateKeyPairSync('rsa', { bits: 4096, comment, ...enc }) : utils.generateKeyPairSync('ed25519', { comment, ...enc });
-  return { privateKey: pair.private, publicKey: pair.public.trim() };
+  for (let i = 0; i < KEYGEN_ATTEMPTS; i++) {
+    const pair = type === 'rsa' ? utils.generateKeyPairSync('rsa', { bits: 4096, comment, ...enc }) : utils.generateKeyPairSync('ed25519', { comment, ...enc });
+    if (!(utils.parseKey(pair.public) instanceof Error)) return { privateKey: pair.private, publicKey: pair.public.trim() };
+  }
+  throw new Error(`Could not generate a valid ${type} key pair`);
 }
 
 export type KeyCheck = { ok: true; publicKey: string } | { ok: false; reason: 'needsPassphrase' | 'wrongPassphrase' | 'invalid'; message: string };
