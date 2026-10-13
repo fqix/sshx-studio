@@ -32,6 +32,7 @@ async function connectHost(resolver: HostResolver, host: ResolvedHost, prompter:
     const tracker = new PromptTracker();
     const ui = tracker.wrap(prompter);
     answerKeyboardInteractive(client, host, ui);
+    const authHandler = buildAuthHandler(host, ui, (...args) => client.emit('keyboard-interactive', ...args));
 
     await handshake(
       client,
@@ -43,7 +44,7 @@ async function connectHost(resolver: HostResolver, host: ResolvedHost, prompter:
         keepaliveInterval: host.serverAliveInterval ? host.serverAliveInterval * 1000 : DEFAULT_KEEPALIVE_MS,
         tryKeyboard: true,
         ...agentForwarding(host, prompter),
-        authHandler: buildAuthHandler(host, ui),
+        authHandler,
         hostVerifier: (key: Buffer, verify: (ok: boolean) => void) => {
           verifyHostKey(host, key, ui).then(verify, (e) => {
             prompter.log(`[${host.alias}] ${e.message}`);
@@ -54,6 +55,10 @@ async function connectHost(resolver: HostResolver, host: ResolvedHost, prompter:
       (host.connectTimeout ?? DEFAULT_TIMEOUT_S) * 1000,
       tracker,
       (e) => (sock instanceof ProxyCommandStream && sock.stderr ? `${e.message}\nProxyCommand stderr: ${sock.stderr.trim()}` : e.message),
+      (e) => {
+        authHandler.notSent();
+        prompter.log(`[${host.alias}] SSH agent unavailable, skipping it: ${e.message}`);
+      },
     );
 
     prompter.log(`[${host.alias}] connected to ${host.user}@${host.hostname}:${host.port}`);
