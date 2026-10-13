@@ -41,8 +41,8 @@ export function createPromptSession(output: vscode.OutputChannel, secrets: HostS
 async function offerToSave(secrets: HostSecretStore, id: number, entry: { alias: string; password?: string; passphrase?: string }) {
   const what = entry.password ? t('password') : t('key passphrase');
   const save = t('Save');
-  const choice = await vscode.window.showInformationMessage(t('Save the {0} for "{1}" in the system keychain?', what, entry.alias), save, t('Not now'));
+  const choice = await vscode.window.showInformationMessage(t('Save the {0} for "{1}" in the system credential store?', what, entry.alias), save, t('Not now'));
   if (choice !== save) return;
   await secrets.save(id, { password: entry.password, passphrase: entry.passphrase });
-  vscode.window.setStatusBarMessage(t('Saved to keychain'), 2000);
+  vscode.window.setStatusBarMessage(t('Saved to credential store'), 2000);
 }

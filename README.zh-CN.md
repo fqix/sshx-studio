@@ -39,8 +39,8 @@ Remote - SSH 会把 VS Code 变成远程工作区，但很多时候你并不需�
 **主机与凭据**
 - 首次运行时导入 `~/.ssh/config`（支持 `Include`、通配符、`ProxyJump`、`LocalForward` 等），不会修改你的配置文件。
 - 用表单添加 / 编辑主机，保存前可以先**测试连接**。
-- 支持 SSH agent、密钥文件、密码，或存放在系统钥匙串中的密钥（粘贴已有私钥，或生成 Ed25519 / RSA 密钥对）。
-- 密码和私钥保存在系统钥匙串中，不会以明文文件存放。
+- 支持 SSH agent、密钥文件、密码，或保存在系统凭据存储中的密钥（粘贴已有私钥，或生成 Ed25519 / RSA 密钥对）。
+- 密码和私钥保存在系统凭据存储中（macOS 钥匙串、Windows 凭据管理器、Linux 上的 libsecret），不会以明文文件存放。
 
 **转发**
 - 每台主机可配置端口转发，写法与 `ssh` 参数一致：`-L` 本地、`-R` 远程、`-D` 动态（SOCKS5 / SOCKS4a）。在树中启动、停止，或设为自动启动。
@@ -101,7 +101,7 @@ Remote - SSH 会把 VS Code 变成远程工作区，但很多时候你并不需�
 
 ## 安全与隐私
 
-- **凭据** —— 密码、密钥密码短语和存储的私钥保存在 VS Code 的 SecretStorage 中，底层是 macOS 钥匙串、Windows 凭据管理器或 libsecret，不会写入数据库或磁盘文件。
+- **凭据** —— 密码、密钥密码短语和存储的私钥保存在 VS Code 的 SecretStorage 中，底层是 macOS 钥匙串、Windows 凭据管理器或 libsecret，不会写入数据库或磁盘文件。Linux 上需要运行 GNOME Keyring 或 KWallet 等密钥环服务，否则 VS Code 会退回到较弱的本地加密。
 - **主机数据** —— 主机配置和端口转发保存在本地 SQLite 文件中（`~/.sshx-studio/sshx.db`，仅你本人可读），不会同步或上传。
 - **主机密钥** —— 连接时按 `known_hosts` 校验服务器，密钥变化会拒绝连接。新密钥只有在你确认后（或按 `StrictHostKeyChecking` 的设置）才会添加。
 - **转发** —— 开启 agent 转发后，服务器在连接期间可以使用你的密钥，请只对信任的服务器开启。X11 转发时，服务器只会拿到随机的伪造 cookie。
