@@ -4,9 +4,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
 ### Fixed
 
+- An unreachable SSH agent (for example a stale `SSH_AUTH_SOCK` or `IdentityAgent`) no longer fails the connection; it is skipped and the next authentication method is tried.
+- Keyboard-interactive authentication was never attempted; servers that offer it now get it before password authentication.
 - **Generate key pair** in the host editor could produce an unusable Ed25519 key (about 1 in 256 times) because of a bug in the ssh2 key generator. Malformed keys are now discarded and generated again.
+
+### Changed
+
+- The connection log names each authentication attempt and reports when the server rejects it or asks for more.
+- Secret storage is described as the system credential store (macOS Keychain, Windows Credential Manager, libsecret on Linux) instead of "keychain", and the README notes that Linux needs a running keyring.
 
 ## [0.1.0] - 2026-10-12
 
@@ -27,5 +36,6 @@ First release.
 - English and Simplified Chinese.
 - One VSIX for macOS, Linux (glibc and musl) and Windows on x64 and arm64.
 
-[Unreleased]: https://github.com/fqix/sshx-studio/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/fqix/sshx-studio/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/fqix/sshx-studio/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fqix/sshx-studio/releases/tag/v0.1.0
