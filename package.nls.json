@@ -1,6 +1,6 @@
 {
   "displayName": "SSHX Studio",
-  "description": "SSH hosts with a terminal + SFTP file manager in one tab, port forwarding (-L / -R), ProxyJump / ProxyCommand. Hosts are stored in a local SQLite database, secrets in the OS keychain.",
+  "description": "SSH terminal and SFTP file manager in one tab, with port forwarding (-L / -R / -D), agent and X11 forwarding, and ProxyJump / ProxyCommand. Imports ~/.ssh/config; hosts are stored locally, passwords and keys in the system credential store.",
   "viewContainer.title": "SSHX Studio",
   "view.hosts": "Hosts",
   "view.hosts.welcome": "No hosts yet.\n[Add Host](command:sshxStudio.addHost)\n[Import from SSH Config](command:sshxStudio.importSshConfig)",
@@ -21,7 +21,7 @@
   "cmd.openConfig": "Open SSH Config File",
   "cmd.revealDatabase": "Reveal Database File",
   "cmd.diagnose": "Dump Session Diagnostics",
-  "config.databasePath": "Local SQLite database for hosts and port forwards. Empty = `~/.sshx-studio/sshx.db`. Passwords and private keys are never stored here (they go to the OS keychain).",
+  "config.databasePath": "Local SQLite database for hosts and port forwards. Empty = `~/.sshx-studio/sshx.db`. Passwords and private keys are never stored here (they go to the system credential store).",
   "config.configPath": "SSH config file to import hosts from (automatically on first run, or with *Import from SSH Config*). Empty = `~/.ssh/config`.",
   "config.terminalFontSize": "Terminal font size in session tabs.",
   "cmd.uploadFromExplorer": "Upload to SSH Host…"

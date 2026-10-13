@@ -39,8 +39,8 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that �
 **Hosts and credentials**
 - Imports your `~/.ssh/config` on first run (including `Include`, wildcards, `ProxyJump`, `LocalForward`, …). Your config file is never modified.
 - Add and edit hosts in a form, with **Test connection** before saving.
-- Authenticate with your SSH agent, a key file, a password, or a key stored in the system keychain — paste one or generate an Ed25519 / RSA key pair.
-- Passwords and keys live in the OS keychain, never in plain files.
+- Authenticate with your SSH agent, a key file, a password, or a key kept in the system credential store — paste one or generate an Ed25519 / RSA key pair.
+- Passwords and keys live in the system credential store (macOS Keychain, Windows Credential Manager, libsecret on Linux), never in plain files.
 
 **Forwarding**
 - Port forwards per host, written the way you'd pass them to `ssh`: `-L` local, `-R` remote and `-D` dynamic (SOCKS5 / SOCKS4a). Start, stop, or auto-start them from the tree.
@@ -101,7 +101,7 @@ Requires VS Code 1.101 or later. Nothing needs to be installed on the server bey
 
 ## Security and privacy
 
-- **Credentials** — passwords, key passphrases and stored private keys are kept in VS Code's SecretStorage, which is backed by the macOS Keychain, Windows Credential Manager or libsecret. They are never written to the database or to disk.
+- **Credentials** — passwords, key passphrases and stored private keys are kept in VS Code's SecretStorage, which is backed by the macOS Keychain, Windows Credential Manager or libsecret. They are never written to the database or to disk. On Linux this needs a running keyring such as GNOME Keyring or KWallet; without one, VS Code falls back to weaker local encryption.
 - **Host data** — host settings and port forwards are kept in a local SQLite file (`~/.sshx-studio/sshx.db`, readable only by you). Nothing is synced or uploaded.
 - **Host keys** — servers are verified against your `known_hosts`. A changed key is refused. New keys are added only after you confirm, or as your `StrictHostKeyChecking` setting allows.
 - **Forwarding** — agent forwarding lets the server use your keys while you're connected, so only enable it for servers you trust. With X11 forwarding, the server only ever receives a random fake cookie.
