@@ -24,10 +24,18 @@ mkdirSync(sftpRoot);
 const echo = net.createServer((s) => s.pipe(s));
 await new Promise((r) => echo.listen(0, '127.0.0.1', r));
 
+// ssh2 returns a malformed Ed25519 pair about 1 in 256 times (see src/ssh/keygen.ts); retry until it parses.
+const ed25519 = () => {
+  for (;;) {
+    const pair = utils.generateKeyPairSync('ed25519');
+    if (!(utils.parseKey(pair.public) instanceof Error)) return pair;
+  }
+};
+
 // SSH server: public-key auth for a generated key, direct-tcpip for -L forwards.
-const user = utils.generateKeyPairSync('ed25519');
+const user = ed25519();
 const userPub = utils.parseKey(user.public);
-const server = new Server({ hostKeys: [utils.generateKeyPairSync('ed25519').private] }, (client) => {
+const server = new Server({ hostKeys: [ed25519().private] }, (client) => {
   client.on('error', () => {});
   client.on('authentication', (ctx) => {
     const ok =

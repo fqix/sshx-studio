@@ -39,7 +39,7 @@ const portOf = (s: net.Server) => (s.address() as net.AddressInfo).port;
 async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sshx-test-'));
   const kh = path.join(tmp, 'known_hosts');
-  const hostKey = utils.generateKeyPairSync('ed25519').private;
+  const hostKey = generateKeyPair('ed25519', '').privateKey;
   const sftpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sshx-sftp-root-'));
   const hooks: ServerHooks = { agentRequests: 0, x11Requests: [] };
   const userKey = generateKeyPair('ed25519', 'test@sshx', 'secret-pass');
@@ -195,7 +195,7 @@ Host *
   assert.strictEqual(directTcpip, 1, 'ProxyJump should use direct-tcpip');
 
   // Changed host key must be rejected.
-  const otherKey = utils.parseKey(utils.generateKeyPairSync('ed25519').public) as any;
+  const otherKey = utils.parseKey(generateKeyPair('ed25519', '').publicKey) as any;
   const forged = otherKey.getPublicSSH().toString('base64');
   fs.writeFileSync(kh, fs.readFileSync(kh, 'utf8').replace(/ssh-ed25519 \S+/, `ssh-ed25519 ${forged}`));
   await assert.rejects(connect(cfg, 'direct', prompter));
