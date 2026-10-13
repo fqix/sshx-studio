@@ -101,6 +101,7 @@ async function main() {
         session.on('sftp', (acceptSftp) => serveSftp(acceptSftp(), sftpRoot));
         session.on('auth-agent', (acceptAgent) => {
           hooks.agentRequests++;
+          hooks.agentConn = client;
           acceptAgent?.();
         });
         session.on('x11', (acceptX11, _rejectX11, info) => {
@@ -152,6 +153,34 @@ Host viajump
   Port ${port}
   ProxyJump jump
 
+# Two hops listed on one line: jump, then direct (which has no ProxyJump of its own).
+Host viachain
+  HostName 127.0.0.1
+  Port ${port}
+  ProxyJump jump,direct
+
+# A jump host that is itself reached through ProxyJump.
+Host jump2
+  HostName 127.0.0.1
+  Port ${port}
+  ProxyJump jump
+
+Host viarecursive
+  HostName 127.0.0.1
+  Port ${port}
+  ProxyJump jump2
+
+# A jump host that is reached through ProxyCommand.
+Host viacmdjump
+  HostName 127.0.0.1
+  Port ${port}
+  ProxyJump viacmd
+
+Host loop
+  HostName 127.0.0.1
+  Port ${port}
+  ProxyJump loop
+
 Host *.wild !nope
   User wild
 
@@ -164,7 +193,7 @@ Host *
   );
 
   const cfg = new SshConfig(cfgPath);
-  assert.deepStrictEqual(cfg.listHosts(), ['direct', 'jump', 'viacmd', 'viaquoted', 'viajump']);
+  assert.deepStrictEqual(cfg.listHosts(), ['direct', 'jump', 'viacmd', 'viaquoted', 'viajump', 'viachain', 'jump2', 'viarecursive', 'viacmdjump', 'loop']);
   assert.strictEqual(cfg.resolve('viaquoted').proxyCommand, `"${node}" "${pipe}" 127.0.0.1 ${port}`, 'quotes preserved');
   assert.strictEqual(cfg.resolve('viacmd').proxyCommand, `"${node}" ${pipe} 127.0.0.1 ${port}`);
   assert.strictEqual(cfg.resolve('a.wild').user, 'wild');
@@ -178,7 +207,10 @@ Host *
     log: () => {},
   };
 
-  for (const alias of ['direct', 'viacmd', 'viaquoted', 'viajump']) {
+  // Expected direct-tcpip channels (one per jump hop) for each alias.
+  const hops: Record<string, number> = { direct: 0, viacmd: 0, viaquoted: 0, viajump: 1, viachain: 2, viarecursive: 2, viacmdjump: 1 };
+  for (const [alias, expectedHops] of Object.entries(hops)) {
+    const before = directTcpip;
     const c = await connect(cfg, alias, prompter);
     const out = await new Promise<string>((res, rej) =>
       c.client.exec('hello', (e, s) => {
@@ -188,11 +220,17 @@ Host *
       }),
     );
     assert.strictEqual(out, 'ran:hello');
+    assert.strictEqual(directTcpip - before, expectedHops, `${alias}: one direct-tcpip channel per jump hop`);
     c.dispose();
     console.log(`ok  ${alias}`);
   }
   assert.strictEqual(hostKeyPrompts, 1, 'host key should be trusted after first prompt');
-  assert.strictEqual(directTcpip, 1, 'ProxyJump should use direct-tcpip');
+
+  // A ProxyJump cycle stops at the depth limit instead of recursing forever.
+  const tcpipBeforeLoop = directTcpip;
+  await assert.rejects(connect(cfg, 'loop', prompter), /ProxyJump chain too deep/);
+  assert.strictEqual(directTcpip, tcpipBeforeLoop, 'no connection opened for a cyclic chain');
+  console.log('ok  ProxyJump cycle rejected at the depth limit');
 
   // Changed host key must be rejected.
   const otherKey = utils.parseKey(generateKeyPair('ed25519', '').publicKey) as any;

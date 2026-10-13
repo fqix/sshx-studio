@@ -2,6 +2,7 @@
 import * as assert from 'assert';
 import * as crypto from 'crypto';
 import * as net from 'net';
+import type { Duplex } from 'stream';
 import type { SshConfig } from '../src/config/sshConfig';
 import { ForwardManager } from '../src/forward/forwardManager';
 import { connect } from '../src/ssh/connect';
@@ -12,6 +13,8 @@ import { rewriteSetup, X11Forwarder } from '../src/x11/x11Forwarder';
 /** State the test SSH server records / hooks it calls (wired up in e2e.ts). */
 export interface ServerHooks {
   agentRequests: number;
+  /** Server-side connection of the last client that requested agent forwarding. */
+  agentConn?: any;
   x11Requests: { cookie: string; screen: number }[];
   /** Called when a client opens a shell; the test opens X11 channels from here. */
   onShell?: (conn: any) => void;
@@ -39,6 +42,21 @@ function x11Setup(cookie: Buffer, trailing = Buffer.alloc(0)): Buffer {
   head.writeUInt16LE(cookie.length, 8);
   const pad = (b: Buffer) => Buffer.concat([b, Buffer.alloc((4 - (b.length % 4)) % 4)]);
   return Buffer.concat([head, pad(name), pad(cookie), trailing]);
+}
+
+/**
+ * Server side: open an `auth-agent@openssh.com` channel back to the client, as sshd does when a
+ * remote program uses the forwarded agent. ssh2's Server has no public API for this channel type,
+ * so this mirrors what it does for x11 channels.
+ */
+function openAgentChannel(conn: any): Promise<Duplex> {
+  const { MAX_WINDOW, PACKET_SIZE } = require('ssh2/lib/Channel.js');
+  return new Promise((resolve, reject) => {
+    const done = Object.assign((err: Error | undefined, ch: Duplex) => (err ? reject(err) : resolve(ch)), { type: 'auth-agent@openssh.com' });
+    const id = conn._chanMgr.add(done);
+    if (id === -1) return reject(new Error('No free channels available'));
+    conn._protocol.openssh_authAgent(id, MAX_WINDOW, PACKET_SIZE);
+  });
 }
 
 export async function forwardingTests(cfg: SshConfig, prompter: Prompter, hooks: ServerHooks, echoPort: number) {
@@ -112,7 +130,8 @@ export async function forwardingTests(cfg: SshConfig, prompter: Prompter, hooks:
   // ------------------------------------------------------- agent forwarding
   const withHost = (patch: object): HostResolver => ({ resolve: (a) => ({ ...cfg.resolve(a), ...patch }) });
   const fakeAgent = process.platform === 'win32' ? '\\\\.\\pipe\\sshx-test-agent' : `/tmp/sshx-test-agent-${process.pid}.sock`;
-  const agentServer = net.createServer(() => {});
+  // Fake agent: answers each request with `agent:<request>` so the round trip is visible.
+  const agentServer = net.createServer((s) => s.on('data', (d) => s.write(Buffer.concat([Buffer.from('agent:'), d]))));
   await new Promise<void>((r) => agentServer.listen(fakeAgent, r));
   const exec = async (resolver: HostResolver) => {
     const c = await connect(resolver, 'direct', prompter);
@@ -129,8 +148,27 @@ export async function forwardingTests(cfg: SshConfig, prompter: Prompter, hooks:
   await exec(withHost({ forwardAgent: true, identityAgent: undefined }));
   if (savedSock !== undefined) process.env.SSH_AUTH_SOCK = savedSock;
   if (process.platform !== 'win32') assert.strictEqual(hooks.agentRequests, before + 1, 'no request without an agent');
-  agentServer.close();
   console.log('ok  agent forwarding requested only when enabled and an agent exists');
+
+  // The server opens an agent channel; bytes reach the local agent and its reply comes back.
+  const fwd = await connect(withHost({ forwardAgent: fakeAgent }), 'direct', prompter);
+  await new Promise<void>((res, rej) => fwd.client.exec('true', (e, s) => (e ? rej(e) : s.on('close', () => res()).resume())));
+  const channel = await openAgentChannel(hooks.agentConn);
+  channel.write('\0\0\0\x01\x0b'); // SSH_AGENTC_REQUEST_IDENTITIES
+  const reply = await new Promise<Buffer>((r) => channel.once('data', r));
+  assert.strictEqual(reply.toString('latin1'), 'agent:\0\0\0\x01\x0b', 'agent request relayed and answered');
+  channel.end();
+  fwd.dispose();
+  agentServer.close();
+
+  // Agent gone after login: the channel is refused, the connection keeps working.
+  const deadAgent = process.platform === 'win32' ? '\\\\.\\pipe\\sshx-test-no-agent' : `/tmp/sshx-test-no-agent-${process.pid}.sock`;
+  const stale = await connect(withHost({ forwardAgent: deadAgent }), 'direct', prompter);
+  await new Promise<void>((res, rej) => stale.client.exec('true', (e, s) => (e ? rej(e) : s.on('close', () => res()).resume())));
+  await assert.rejects(openAgentChannel(hooks.agentConn), 'agent channel refused when the local agent is unreachable');
+  await new Promise<void>((res, rej) => stale.client.exec('true', (e, s) => (e ? rej(e) : s.on('close', () => res()).resume())));
+  stale.dispose();
+  console.log('ok  agent forwarding: channel relayed to the local agent, refused when the agent is gone');
 
   // ----------------------------------------------------------------- X11
   assert.deepStrictEqual(parseDisplay(':0', 'linux'), { kind: 'unix', path: '/tmp/.X11-unix/X0', display: ':0', number: 0, screen: 0 });
