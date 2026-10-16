@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
 ### Added
 
 - Host groups: organize hosts into nestable folders in the tree. Create, rename and delete groups, move hosts and groups by drag and drop or **Move to Group…**, and pick the group in the host editor. Deleting a group keeps its hosts.
@@ -44,6 +46,7 @@ First release.
 - English and Simplified Chinese.
 - One VSIX for macOS, Linux (glibc and musl) and Windows on x64 and arm64.
 
-[Unreleased]: https://github.com/fqix/sshx-studio/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/fqix/sshx-studio/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/fqix/sshx-studio/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/fqix/sshx-studio/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fqix/sshx-studio/releases/tag/v0.1.0
