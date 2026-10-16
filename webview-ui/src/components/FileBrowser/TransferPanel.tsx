@@ -8,7 +8,7 @@ import './TransferPanel.css';
 
 /** Per-transfer progress bars at the bottom of the file pane. */
 export function TransferPanel() {
-  const { items, active, cancel, reveal, clearFinished } = useTransfers();
+  const { items, active, cancel, pause, resume, reveal, clearFinished } = useTransfers();
   const [open, setOpen] = useState(true);
   // Re-open when new work arrives.
   useEffect(() => {
@@ -29,7 +29,7 @@ export function TransferPanel() {
       {open && (
         <ul className="transfers-list">
           {items.map((item) => (
-            <TransferRow key={item.id} item={item} onCancel={() => cancel(item.id)} onReveal={() => reveal(item.id)} />
+            <TransferRow key={item.id} item={item} onCancel={() => cancel(item.id)} onPause={() => pause(item.id)} onResume={() => resume(item.id)} onReveal={() => reveal(item.id)} />
           ))}
         </ul>
       )}
@@ -37,7 +37,15 @@ export function TransferPanel() {
   );
 }
 
-function TransferRow({ item, onCancel, onReveal }: { item: TransferItem; onCancel(): void; onReveal(): void }) {
+interface RowProps {
+  item: TransferItem;
+  onCancel(): void;
+  onPause(): void;
+  onResume(): void;
+  onReveal(): void;
+}
+
+function TransferRow({ item, onCancel, onPause, onResume, onReveal }: RowProps) {
   const pct = item.totalBytes > 0 ? Math.min(100, (item.doneBytes / item.totalBytes) * 100) : item.status === 'done' ? 100 : 0;
   const busy = item.status === 'queued' || item.status === 'running';
   return (
@@ -48,7 +56,9 @@ function TransferRow({ item, onCancel, onReveal }: { item: TransferItem; onCance
           {item.name}
         </span>
         <span className="transfer-status">{statusText(item, pct)}</span>
-        {busy && <IconButton icon="close" label={t('transfers.cancel')} onClick={onCancel} />}
+        {busy && <IconButton icon="debug-pause" label={t('transfers.pause')} onClick={onPause} />}
+        {item.canResume && <IconButton icon="debug-continue" label={t('transfers.resume')} onClick={onResume} />}
+        {(busy || item.canResume) && <IconButton icon="close" label={item.canResume ? t('transfers.discard') : t('transfers.cancel')} onClick={onCancel} />}
         {item.canReveal && <IconButton icon="folder-opened" label={t('transfers.reveal')} onClick={onReveal} />}
       </div>
       {(item.status === 'running' || item.status === 'queued') && (
@@ -77,13 +87,15 @@ function statusText(item: TransferItem, pct: number): string {
       return t('transfers.done');
     case 'cancelled':
       return t('transfers.cancelled');
+    case 'paused':
+      return item.totalBytes ? `${t('transfers.paused')} · ${Math.floor(pct)}%` : t('transfers.paused');
     case 'error':
       return t('transfers.failed');
   }
 }
 
 function detailText(item: TransferItem): string {
-  if (item.status === 'error') return item.error ?? '';
+  if (item.status === 'error') return item.canResume ? `${item.error ?? ''} · ${t('transfers.canResume')}` : item.error ?? '';
   const parts: string[] = [];
   if (item.totalBytes) parts.push(`${formatSize(item.doneBytes)} / ${formatSize(item.totalBytes)}`);
   if (item.files > 1) parts.push(t('transfers.files', item.filesDone, item.files));

@@ -25,11 +25,12 @@ export class HostEditorPanel {
   private readonly panel: vscode.WebviewPanel;
   private generated?: GeneratedKey;
 
-  static show(extensionUri: vscode.Uri, deps: HostEditorDeps, hostId?: number, title?: string) {
+  /** `groupId` is where a new host starts (ignored when editing). */
+  static show(extensionUri: vscode.Uri, deps: HostEditorDeps, hostId?: number, title?: string, groupId?: number) {
     const key = hostId === undefined ? 'new' : String(hostId);
     const existing = open.get(key);
     if (existing) return existing.panel.reveal();
-    open.set(key, new HostEditorPanel(extensionUri, deps, key, hostId, title ?? t('New Host')));
+    open.set(key, new HostEditorPanel(extensionUri, deps, key, hostId, title ?? t('New Host'), groupId));
   }
 
   private get service() {
@@ -42,6 +43,7 @@ export class HostEditorPanel {
     key: string,
     private readonly hostId: number | undefined,
     title: string,
+    private readonly groupId?: number,
   ) {
     this.panel = vscode.window.createWebviewPanel('sshxHostEditor', title, vscode.ViewColumn.Active, {
       enableScripts: true,
@@ -66,7 +68,7 @@ export class HostEditorPanel {
     try {
       switch (m.type) {
         case 'editor.ready':
-          return this.post({ type: 'editor.init', state: await this.service.editorState(this.hostId) });
+          return this.post({ type: 'editor.init', state: await this.service.editorState(this.hostId, this.groupId) });
         case 'editor.cancel':
           return this.panel.dispose();
         case 'editor.browseKeyFile': {

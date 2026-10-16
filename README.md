@@ -27,18 +27,23 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that �
 
 **Terminal and files together**
 - A full xterm.js terminal and an SFTP file browser in the same tab, with a resizable split.
+- Find in the terminal (⌘F / Ctrl+F), with case, whole-word and regex options.
+- Several terminals per tab on one connection, or duplicate the session into a new tab.
 - Browse, rename, delete, create folders, `cd` the terminal into any folder.
+- Optional local pane beside the remote one: drag files between them to upload or download.
 - Double-click a file to edit it in VS Code — saving uploads it back.
 - Upload by dialog, drag and drop, or **right-click in the Explorer → Upload to SSH Host…**
 
 **Transfers you can see**
 - A progress bar per file or folder, with speed, time left and file count.
 - Up to three transfers in parallel, each on its own SFTP channel, so browsing never stalls.
+- Pause and resume anytime; a transfer interrupted by a dropped connection picks up where it stopped after reconnecting.
 - Cancel anytime; partial files are cleaned up.
 
 **Hosts and credentials**
 - Imports your `~/.ssh/config` on first run (including `Include`, wildcards, `ProxyJump`, `LocalForward`, …). Your config file is never modified.
 - Add and edit hosts in a form, with **Test connection** before saving.
+- Organize hosts into nested groups; drag hosts between them.
 - Authenticate with your SSH agent, a key file, a password, or a key kept in the system credential store — paste one or generate an Ed25519 / RSA key pair.
 - Passwords and keys live in the system credential store (macOS Keychain, Windows Credential Manager, libsecret on Linux), never in plain files.
 

@@ -28,6 +28,11 @@ export class SessionRegistry implements vscode.Disposable {
     return existing;
   }
 
+  /** The session tab that has focus, if any. */
+  get active(): SessionPanel | undefined {
+    return [...this.sessions].find((s) => s.active);
+  }
+
   isOpen(alias: string): boolean {
     return [...this.sessions].some((s) => s.alias === alias);
   }

@@ -21,6 +21,9 @@ export const vscode: VsCodeApi =
 /** Typed persisted UI state (survives the panel being hidden / VS Code reload). */
 export interface UiState {
   filesWidth?: number;
+  /** Local pane shown, and its width. */
+  localOpen?: boolean;
+  localWidth?: number;
 }
 
 export function getUiState(): UiState {

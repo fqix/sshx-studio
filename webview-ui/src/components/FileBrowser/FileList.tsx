@@ -12,6 +12,8 @@ interface Props {
   onClickEmpty(): void;
   onContextMenu(e: React.MouseEvent, index: number | null): void;
   onKeyDown(e: React.KeyboardEvent): void;
+  /** Rows can be dragged (to the other pane) when set. */
+  onDragStart?(e: React.DragEvent, index: number): void;
 }
 
 const ICONS: Record<FileEntry['type'], string> = { dir: 'folder', link: 'file-symlink-file', file: 'file' };
@@ -35,6 +37,8 @@ export function FileList(p: Props) {
           onClick={(ev) => p.onClickRow(i, { shift: ev.shiftKey, toggle: ev.metaKey || ev.ctrlKey })}
           onDoubleClick={() => p.onActivate(e)}
           onContextMenu={(ev) => p.onContextMenu(ev, i)}
+          draggable={!!p.onDragStart}
+          onDragStart={p.onDragStart && ((ev) => p.onDragStart!(ev, i))}
         >
           <i className={`icon codicon codicon-${ICONS[e.type]}`} aria-hidden="true" />
           <span className="name">{e.name}</span>

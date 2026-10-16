@@ -13,6 +13,8 @@ export function useTransfers() {
     items,
     active: items.filter((i) => i.status === 'queued' || i.status === 'running').length,
     cancel: (id: number) => vscode.postMessage({ type: 'transfer.cancel', id }),
+    pause: (id: number) => vscode.postMessage({ type: 'transfer.pause', id }),
+    resume: (id: number) => vscode.postMessage({ type: 'transfer.resume', id }),
     reveal: (id: number) => vscode.postMessage({ type: 'transfer.reveal', id }),
     clearFinished: () => vscode.postMessage({ type: 'transfer.clearFinished' }),
   };

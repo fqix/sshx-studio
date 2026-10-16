@@ -53,6 +53,18 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "sshxStudio.newTerminal",
+        "title": "%cmd.newTerminal%",
+        "category": "SSHX",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sshxStudio.duplicateSession",
+        "title": "%cmd.duplicateSession%",
+        "category": "SSHX",
+        "icon": "$(split-horizontal)"
+      },
+      {
         "command": "sshxStudio.addHost",
         "title": "%cmd.addHost%",
         "category": "SSHX",
@@ -75,6 +87,29 @@
         "title": "%cmd.copyPublicKey%",
         "category": "SSHX",
         "icon": "$(key)"
+      },
+      {
+        "command": "sshxStudio.addGroup",
+        "title": "%cmd.addGroup%",
+        "category": "SSHX",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "sshxStudio.renameGroup",
+        "title": "%cmd.renameGroup%",
+        "category": "SSHX"
+      },
+      {
+        "command": "sshxStudio.deleteGroup",
+        "title": "%cmd.deleteGroup%",
+        "category": "SSHX",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "sshxStudio.moveToGroup",
+        "title": "%cmd.moveToGroup%",
+        "category": "SSHX",
+        "icon": "$(folder)"
       },
       {
         "command": "sshxStudio.importSshConfig",
@@ -161,9 +196,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "sshxStudio.refresh",
+          "command": "sshxStudio.addGroup",
           "when": "view == sshxStudio.hosts",
           "group": "navigation@2"
+        },
+        {
+          "command": "sshxStudio.refresh",
+          "when": "view == sshxStudio.hosts",
+          "group": "navigation@3"
         },
         {
           "command": "sshxStudio.importSshConfig",
@@ -182,6 +222,36 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "sshxStudio.addHost",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "inline@1"
+        },
+        {
+          "command": "sshxStudio.addHost",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "1_new@1"
+        },
+        {
+          "command": "sshxStudio.addGroup",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "1_new@2"
+        },
+        {
+          "command": "sshxStudio.renameGroup",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "sshxStudio.moveToGroup",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "3_edit@2"
+        },
+        {
+          "command": "sshxStudio.deleteGroup",
+          "when": "view == sshxStudio.hosts && viewItem == group",
+          "group": "9_delete@1"
+        },
         {
           "command": "sshxStudio.connect",
           "when": "view == sshxStudio.hosts && viewItem =~ /^host/",
@@ -211,6 +281,11 @@
           "command": "sshxStudio.copyPublicKey",
           "when": "view == sshxStudio.hosts && viewItem == host.withPublicKey",
           "group": "3_edit@2"
+        },
+        {
+          "command": "sshxStudio.moveToGroup",
+          "when": "view == sshxStudio.hosts && viewItem =~ /^host/",
+          "group": "3_edit@3"
         },
         {
           "command": "sshxStudio.deleteHost",
@@ -290,6 +365,26 @@
         {
           "command": "sshxStudio.refresh",
           "when": "false"
+        },
+        {
+          "command": "sshxStudio.renameGroup",
+          "when": "false"
+        },
+        {
+          "command": "sshxStudio.deleteGroup",
+          "when": "false"
+        },
+        {
+          "command": "sshxStudio.moveToGroup",
+          "when": "false"
+        },
+        {
+          "command": "sshxStudio.newTerminal",
+          "when": "activeWebviewPanelId == 'sshxSession'"
+        },
+        {
+          "command": "sshxStudio.duplicateSession",
+          "when": "activeWebviewPanelId == 'sshxSession'"
         }
       ],
       "explorer/context": [
@@ -297,6 +392,18 @@
           "command": "sshxStudio.uploadFromExplorer",
           "when": "resourceScheme == file",
           "group": "7_sshx@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sshxStudio.newTerminal",
+          "when": "activeWebviewPanelId == 'sshxSession'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sshxStudio.duplicateSession",
+          "when": "activeWebviewPanelId == 'sshxSession'",
+          "group": "navigation@2"
         }
       ]
     },

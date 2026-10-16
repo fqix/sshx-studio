@@ -17,7 +17,7 @@ export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'err
 // --------------------------------------------------------------- transfers
 
 export type TransferDirection = 'upload' | 'download';
-export type TransferStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled';
+export type TransferStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled' | 'paused';
 
 /** One upload/download shown in the file pane (a file, a folder, or a dropped file). */
 export interface TransferItem {
@@ -37,6 +37,8 @@ export interface TransferItem {
   error?: string;
   /** Finished download that can be shown in the OS file manager. */
   canReveal: boolean;
+  /** Paused or failed, with the partial file kept: Resume continues where it stopped. */
+  canResume: boolean;
 }
 
 // ------------------------------------------------------------- host editor
@@ -55,6 +57,8 @@ export interface HostDraft {
   identityFile: string;
   proxyJump: string;
   proxyCommand: string;
+  /** Group (tree folder); null = top level. */
+  groupId: number | null;
   password: string;
   clearPassword: boolean;
   /** Pasted private key (keyStored). */
@@ -75,15 +79,21 @@ export interface HostEditorState {
   publicKey: string;
   /** Other hosts' aliases (for the ProxyJump picker). */
   otherAliases: string[];
+  /** Every group, with its full "Parent / Child" path, sorted by path. */
+  groups: { id: number; path: string }[];
 }
 
 export type HostDraftField = keyof HostDraft;
 
 /** webview → extension */
 export type WebviewMessage =
-  | { type: 'ready'; cols: number; rows: number }
-  | { type: 'term.input'; data: string }
-  | { type: 'term.resize'; cols: number; rows: number }
+  /** The page is up; connect and open the shell for its first terminal. */
+  | { type: 'ready'; term: number; cols: number; rows: number }
+  /** Another terminal in this tab: a new shell on the same connection. Ids are chosen by the webview. */
+  | { type: 'term.open'; term: number; cols: number; rows: number }
+  | { type: 'term.close'; term: number }
+  | { type: 'term.input'; term: number; data: string }
+  | { type: 'term.resize'; term: number; cols: number; rows: number }
   | { type: 'reconnect' }
   | { type: 'fs.list'; path: string }
   | { type: 'fs.download'; paths: string[] }
@@ -93,9 +103,21 @@ export type WebviewMessage =
   | { type: 'fs.delete'; paths: string[] }
   | { type: 'fs.rename'; path: string }
   | { type: 'fs.open'; path: string }
-  | { type: 'fs.cdTerminal'; path: string }
+  | { type: 'fs.cdTerminal'; path: string; term: number }
+  /** Local pane (this machine). `path` '' = the default folder (workspace or home). */
+  | { type: 'local.list'; path: string }
+  | { type: 'local.open'; path: string }
+  | { type: 'local.reveal'; path: string }
+  | { type: 'local.mkdir'; dir: string }
+  | { type: 'local.rename'; path: string }
+  | { type: 'local.delete'; paths: string[] }
+  /** Between the panes: local paths into a remote folder, remote paths into a local folder. */
+  | { type: 'xfer.upload'; paths: string[]; dir: string }
+  | { type: 'xfer.download'; paths: string[]; dir: string }
   | { type: 'log'; message: string }
   | { type: 'transfer.cancel'; id: number }
+  | { type: 'transfer.pause'; id: number }
+  | { type: 'transfer.resume'; id: number }
   | { type: 'transfer.reveal'; id: number }
   | { type: 'transfer.clearFinished' }
   | { type: 'editor.ready' }
@@ -109,11 +131,16 @@ export type WebviewMessage =
 /** extension → webview */
 export type HostMessage =
   | { type: 'status'; state: ConnectionState; text: string }
-  | { type: 'term.data'; data: string }
+  | { type: 'term.data'; term: number; data: string }
+  /** Add a terminal to this tab (from the editor title bar). */
+  | { type: 'term.new' }
   | { type: 'fs.loading' }
   | { type: 'fs.home'; home: string }
   | { type: 'fs.listing'; path: string; entries: FileEntry[] }
   | { type: 'fs.error'; message: string }
+  /** Local paths use the host OS's separator; `parent` equals `path` at a root. */
+  | { type: 'local.listing'; path: string; parent: string; home: string; sep: string; entries: FileEntry[] }
+  | { type: 'local.error'; message: string }
   | { type: 'debug.dump' }
   | { type: 'transfer.update'; items: TransferItem[] }
   | { type: 'editor.init'; state: HostEditorState }

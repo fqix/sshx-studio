@@ -9,6 +9,8 @@ const MAX_PARALLEL = 3;
 const UPDATE_INTERVAL_MS = 150;
 /** Window for the speed estimate. */
 const SPEED_WINDOW_MS = 3000;
+/** Longest a resumed transfer waits for the stopped attempt's requests to drain. */
+const SETTLE_WAIT_MS = 5000;
 
 /** What a transfer does once it has its own SFTP channel. */
 export interface TransferContext {
@@ -17,6 +19,8 @@ export interface TransferContext {
   setTotals(files: number, bytes: number): void;
   /** Bytes transferred since the last call. */
   progress(bytes: number): void;
+  /** Bytes already done by an earlier attempt of a resumed transfer (not counted as speed). */
+  skip(bytes: number): void;
   /** A file of a folder transfer started / finished. */
   fileStarted(name: string): void;
   fileDone(): void;
@@ -25,8 +29,20 @@ export interface TransferContext {
 interface Job {
   item: TransferItem;
   run(ctx: TransferContext): Promise<void>;
-  /** Best-effort cleanup of a partially written file after cancel/failure. */
+  /**
+   * Best-effort removal of partially written files. Runs after a cancel, or a failure of a
+   * non-resumable job; a resumable job keeps them until it is cleared from the list.
+   */
   cleanup?(): Promise<void>;
+  /** `run` can be called again after a failure or pause and continues where it stopped. */
+  resumable: boolean;
+  paused: boolean;
+  /** Stopped because the connection dropped; resumed automatically after reconnecting. */
+  interrupted?: boolean;
+  /** Counts attempts; callbacks from an earlier attempt (still draining after a stop) are ignored. */
+  attempt: number;
+  /** The last attempt's work, which a resumed attempt waits for so the two never touch the same files at once. */
+  settled?: Promise<unknown>;
   rfs?: RemoteFs;
   /** Rejects the running job immediately (ssh2's fastGet/fastPut never call back once their channel is closed). */
   abort?: (reason: Error) => void;
@@ -55,7 +71,7 @@ export class TransferQueue {
     direction: TransferDirection,
     name: string,
     run: Job['run'],
-    options: { revealPath?: string; cleanup?: Job['cleanup'] } = {},
+    options: { revealPath?: string; cleanup?: Job['cleanup']; resumable?: boolean } = {},
   ): number {
     const item: TransferItem = {
       id: this.nextId++,
@@ -68,26 +84,83 @@ export class TransferQueue {
       bytesPerSecond: 0,
       status: 'queued',
       canReveal: false,
+      canResume: false,
     };
-    this.jobs.push({ item, run, cleanup: options.cleanup, revealPath: options.revealPath, cancelled: false, samples: [] });
+    this.jobs.push({
+      item,
+      run,
+      cleanup: options.cleanup,
+      resumable: !!options.resumable,
+      revealPath: options.revealPath,
+      cancelled: false,
+      paused: false,
+      attempt: 0,
+      samples: [],
+    });
     this.flush();
     this.pump();
     return item.id;
   }
 
+  /** Stop and discard: partial files are removed. Also discards a paused or failed transfer. */
   cancel(id: number) {
     const job = this.jobs.find((j) => j.item.id === id);
-    if (!job || (job.item.status !== 'queued' && job.item.status !== 'running')) return;
-    job.cancelled = true;
-    if (job.item.status === 'queued') job.item.status = 'cancelled';
-    else this.stop(job, new Error('cancelled'));
+    if (!job) return;
+    if (job.item.canResume) {
+      job.item.canResume = false;
+      job.item.status = 'cancelled';
+      void job.cleanup?.().catch(() => {});
+    } else if (job.item.status === 'queued' || job.item.status === 'running') {
+      job.cancelled = true;
+      job.paused = false;
+      if (job.item.status === 'queued') job.item.status = 'cancelled';
+      else this.stop(job, new Error('cancelled'));
+    }
     this.flush();
     this.pump();
   }
 
+  /** Stop but keep partial files, so the transfer can be resumed. */
+  pause(id: number) {
+    const job = this.jobs.find((j) => j.item.id === id);
+    if (!job?.resumable || (job.item.status !== 'queued' && job.item.status !== 'running')) return;
+    job.cancelled = true;
+    job.paused = true;
+    if (job.item.status === 'queued') {
+      job.item.status = 'paused';
+      job.item.canResume = true;
+    } else {
+      this.stop(job, new Error('paused'));
+    }
+    this.flush();
+    this.pump();
+  }
+
+  /** Queue a paused or failed transfer again; it continues from where it stopped. */
+  resume(id: number) {
+    const job = this.jobs.find((j) => j.item.id === id);
+    if (!job?.item.canResume) return;
+    Object.assign(job.item, { status: 'queued', canResume: false, error: undefined, doneBytes: 0, filesDone: 0, bytesPerSecond: 0, currentFile: undefined });
+    job.cancelled = false;
+    job.paused = false;
+    job.interrupted = false;
+    job.samples = [];
+    this.flush();
+    this.pump();
+  }
+
+  /** Reconnected: resume what the lost connection interrupted. */
+  resumeInterrupted() {
+    for (const job of this.jobs) if (job.interrupted && job.item.canResume) this.resume(job.item.id);
+  }
+
   clearFinished() {
     for (let i = this.jobs.length - 1; i >= 0; i--) {
-      if (!['queued', 'running'].includes(this.jobs[i].item.status)) this.jobs.splice(i, 1);
+      const job = this.jobs[i];
+      if (['queued', 'running'].includes(job.item.status)) continue;
+      // Leaving the list ends any chance to resume, so the partial files go too.
+      if (job.item.canResume) void job.cleanup?.().catch(() => {});
+      this.jobs.splice(i, 1);
     }
     this.flush();
   }
@@ -96,13 +169,16 @@ export class TransferQueue {
     return this.jobs.find((j) => j.item.id === id)?.revealPath;
   }
 
-  /** Connection lost: fail everything that hasn't finished. */
-  abortAll(reason: string) {
+  /** Connection lost (`interrupted`) or session closed: fail everything that hasn't finished. */
+  abortAll(reason: string, interrupted = false) {
     for (const job of this.jobs) {
       if (job.item.status === 'queued' || job.item.status === 'running') {
         job.cancelled = true;
+        job.paused = false;
         job.item.status = 'error';
         job.item.error = reason;
+        if (job.resumable) job.item.canResume = true;
+        job.interrupted = interrupted && job.resumable;
         this.stop(job, new Error(reason));
       }
     }
@@ -112,6 +188,8 @@ export class TransferQueue {
   dispose() {
     this.abortAll(t('Session closed'));
     if (this.updateTimer) clearTimeout(this.updateTimer);
+    // Nobody can resume them any more. Local partial files can still go; remote ones only if the channel is still up.
+    for (const job of this.jobs) if (job.item.canResume) void job.cleanup?.().catch(() => {});
   }
 
   /** Settle a running job now and close its channel to stop the data flow. */
@@ -128,35 +206,50 @@ export class TransferQueue {
 
   private async start(job: Job) {
     const item = job.item;
+    const attempt = ++job.attempt;
+    const current = () => job.attempt === attempt;
     item.status = 'running';
     this.flush();
     const aborted = new Promise<never>((_, reject) => (job.abort = reject));
     aborted.catch(() => {});
     try {
+      // A stopped attempt is settled at once but its requests drain for a moment; wait (bounded) for them.
+      if (job.settled) await Promise.race([job.settled, aborted, new Promise((r) => setTimeout(r, SETTLE_WAIT_MS))]);
       job.rfs = await Promise.race([this.openChannel(), aborted]);
       if (job.cancelled) throw new Error('cancelled');
       const work = job.run({
         rfs: job.rfs,
         setTotals: (files, bytes) => {
+          if (!current()) return;
           item.files = files;
           item.totalBytes = bytes;
           this.scheduleUpdate();
         },
         progress: (bytes) => {
+          if (!current()) return;
           item.doneBytes += bytes;
           this.sample(job);
           this.scheduleUpdate();
         },
+        skip: (bytes) => {
+          if (!current()) return;
+          item.doneBytes += bytes;
+          job.samples = [];
+          this.scheduleUpdate();
+        },
         fileStarted: (name) => {
+          if (!current()) return;
           item.currentFile = name;
           this.scheduleUpdate();
         },
         fileDone: () => {
+          if (!current()) return;
           item.filesDone++;
           this.scheduleUpdate();
         },
       });
       work.catch(() => {});
+      job.settled = work.catch(() => {});
       await Promise.race([work, aborted]);
       if (job.cancelled) throw new Error('cancelled');
       item.status = 'done';
@@ -165,14 +258,19 @@ export class TransferQueue {
     } catch (e) {
       // abortAll() may already have marked it as an error while we were awaiting.
       const aborted = (item.status as TransferStatus) === 'error';
-      if (job.cancelled && !aborted) {
+      if (job.paused) {
+        item.status = 'paused';
+      } else if (job.cancelled && !aborted) {
         item.status = 'cancelled';
       } else if (!aborted) {
         item.status = 'error';
         item.error = errorMessage(e);
         this.log(`${item.direction} ${item.name}: ${item.error}`);
       }
-      await job.cleanup?.().catch(() => {});
+      // A resumable job keeps its partial files after a pause or failure; a cancel removes them.
+      const keep = job.resumable && item.status !== 'cancelled';
+      item.canResume = keep;
+      if (!keep) await job.cleanup?.().catch(() => {});
     } finally {
       item.bytesPerSecond = 0;
       if (job.rfs) safe(() => job.rfs!.end());

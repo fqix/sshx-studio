@@ -4,6 +4,7 @@ import type { HostService } from '../hosts/hostService';
 import type { HostResolver, PromptSession } from '../ssh/types';
 import type { SessionRegistry } from '../session/sessionRegistry';
 import type { ForwardRepository } from '../storage/forwardRepository';
+import type { GroupRepository } from '../storage/groupRepository';
 import type { HostRepository } from '../storage/hostRepository';
 import type { HostTreeProvider } from '../views/hostTree/hostTreeProvider';
 
@@ -12,6 +13,7 @@ export interface CommandContext {
   extensionUri: vscode.Uri;
   output: vscode.OutputChannel;
   hosts: HostRepository;
+  groups: GroupRepository;
   forwards: ForwardRepository;
   hostService: HostService;
   resolver: HostResolver;

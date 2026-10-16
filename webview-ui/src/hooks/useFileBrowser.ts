@@ -9,17 +9,46 @@ export interface ClickModifiers {
   toggle: boolean;
 }
 
-/** Remote directory state + selection, fed by `fs.*` host messages. */
-export function useFileBrowser() {
+/**
+ * Directory state + selection for one pane: the remote side (`fs.*` messages, POSIX paths) or
+ * this machine (`local.*` messages, paths in the host OS's format).
+ */
+export function useFileBrowser(kind: 'remote' | 'local' = 'remote') {
   const [cwd, setCwd] = useState('');
-  const [home, setHome] = useState('/');
+  const [home, setHome] = useState(kind === 'remote' ? '/' : '');
+  // Local only: separator and parent come from the extension (Windows paths aren't POSIX).
+  const [sep, setSep] = useState('/');
+  const [parent, setParent] = useState('');
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
+  const showListing = (path: string, list: FileEntry[]) => {
+    if (path !== cwd) {
+      setSelected(new Set());
+      setAnchor(-1);
+    }
+    setCwd(path);
+    setEntries(list);
+    setLoading(false);
+    setError(undefined);
+  };
+
   useHostMessage((m) => {
+    if (kind === 'local') {
+      if (m.type === 'local.listing') {
+        setSep(m.sep);
+        setParent(m.parent);
+        setHome(m.home);
+        showListing(m.path, m.entries);
+      } else if (m.type === 'local.error') {
+        setLoading(false);
+        setError(m.message);
+      }
+      return;
+    }
     switch (m.type) {
       case 'fs.loading':
         setLoading(true);
@@ -29,14 +58,7 @@ export function useFileBrowser() {
         setHome(m.home);
         break;
       case 'fs.listing':
-        if (m.path !== cwd) {
-          setSelected(new Set());
-          setAnchor(-1);
-        }
-        setCwd(m.path);
-        setEntries(m.entries);
-        setLoading(false);
-        setError(undefined);
+        showListing(m.path, m.entries);
         break;
       case 'fs.error':
         setLoading(false);
@@ -45,10 +67,14 @@ export function useFileBrowser() {
     }
   });
 
-  const navigate = useCallback((path: string) => vscode.postMessage({ type: 'fs.list', path }), []);
+  const navigate = useCallback((path: string) => vscode.postMessage({ type: kind === 'remote' ? 'fs.list' : 'local.list', path }), [kind]);
+  const join = useCallback(
+    (name: string) => (kind === 'remote' ? joinPath(cwd, name) : (cwd.endsWith(sep) ? cwd : cwd + sep) + name),
+    [kind, cwd, sep],
+  );
 
   const selectedEntries = useMemo(() => entries.filter((e) => selected.has(e.name)), [entries, selected]);
-  const selectedPaths = useMemo(() => selectedEntries.map((e) => joinPath(cwd, e.name)), [selectedEntries, cwd]);
+  const selectedPaths = useMemo(() => selectedEntries.map((e) => join(e.name)), [selectedEntries, join]);
 
   const clickRow = useCallback(
     (index: number, mod: ClickModifiers) => {
@@ -87,11 +113,11 @@ export function useFileBrowser() {
   /** Double-click / Enter: enter directories, open files in the editor. */
   const activate = useCallback(
     (entry: FileEntry) => {
-      const p = joinPath(cwd, entry.name);
+      const p = join(entry.name);
       if (entry.type === 'dir') navigate(p);
-      else vscode.postMessage({ type: 'fs.open', path: p });
+      else vscode.postMessage({ type: kind === 'remote' ? 'fs.open' : 'local.open', path: p });
     },
-    [cwd, navigate],
+    [join, navigate, kind],
   );
 
   return {
@@ -104,7 +130,8 @@ export function useFileBrowser() {
     loading,
     error,
     navigate,
-    goUp: () => navigate(parentPath(cwd)),
+    join,
+    goUp: () => navigate(kind === 'remote' ? parentPath(cwd) : parent || cwd),
     goHome: () => navigate(home),
     refresh: () => navigate(cwd),
     clickRow,

@@ -37,6 +37,18 @@ export function HostEditorPage() {
         <Field label={t('editor.username')}>
           <input value={draft.username} spellCheck={false} placeholder={t('editor.usernamePlaceholder')} onChange={(e) => m.update('username', e.target.value)} />
         </Field>
+        {state.groups.length > 0 && (
+          <Field label={t('editor.group')} error={fieldError('groupId')}>
+            <select value={draft.groupId ?? ''} onChange={(e) => m.update('groupId', e.target.value ? Number(e.target.value) : null)}>
+              <option value="">{t('editor.noGroup')}</option>
+              {state.groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.path}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </section>
 
       <AuthSection m={m} />

@@ -5,11 +5,13 @@ interface Options {
   min: number;
   /** Space that must stay free for the other pane. */
   reserve: number;
+  /** Where the splitter is: on the pane's left edge (pane docked right, the default) or its right edge. */
+  edge?: 'left' | 'right';
   onCommit?: (width: number) => void;
 }
 
-/** Width of a right-docked pane controlled by dragging a splitter on its left edge. */
-export function useResizableWidth({ initial, min, reserve, onCommit }: Options) {
+/** Width of a pane controlled by dragging a splitter on one of its edges. */
+export function useResizableWidth({ initial, min, reserve, onCommit, edge = 'left' }: Options) {
   const [width, setWidth] = useState(initial);
 
   const startDrag = useCallback(
@@ -19,7 +21,8 @@ export function useResizableWidth({ initial, min, reserve, onCommit }: Options) 
       const startW = width;
       let w = startW;
       const move = (ev: MouseEvent) => {
-        w = Math.max(min, Math.min(window.innerWidth - reserve, startW - (ev.clientX - startX)));
+        const dx = ev.clientX - startX;
+        w = Math.max(min, Math.min(window.innerWidth - reserve, edge === 'left' ? startW - dx : startW + dx));
         setWidth(w);
       };
       const up = () => {
@@ -32,8 +35,8 @@ export function useResizableWidth({ initial, min, reserve, onCommit }: Options) 
       window.addEventListener('mousemove', move);
       window.addEventListener('mouseup', up);
     },
-    [width, min, reserve, onCommit],
+    [width, min, reserve, onCommit, edge],
   );
 
-  return { width, startDrag };
+  return { width, setWidth, startDrag };
 }

@@ -15,6 +15,7 @@ function demoSession(send: (m: HostMessage) => void) {
   send({ type: 'status', state: 'connected', text: 'deploy@web-01.example.com' });
   send({
     type: 'term.data',
+    term: 1,
     data:
       `Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)\r\n\r\n` +
       `  System load:  0.08               Processes:             142\r\n` +
@@ -40,7 +41,7 @@ function demoSession(send: (m: HostMessage) => void) {
       file('backup-2026-10-11.tar.gz', 734_003_200, 36000), file('README.md', 4096, 864000),
     ],
   });
-  const item = (p: Partial<TransferItem>): TransferItem => ({ id: 0, direction: 'upload', name: '', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, ...p });
+  const item = (p: Partial<TransferItem>): TransferItem => ({ id: 0, direction: 'upload', name: '', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false, ...p });
   send({
     type: 'transfer.update',
     items: [
@@ -54,10 +55,10 @@ function demoSession(send: (m: HostMessage) => void) {
 /** Fake transfers with progress so the transfer panel can be developed in a browser. */
 function simulateTransfers(send: (m: HostMessage) => void) {
   const items: TransferItem[] = [
-    { id: 1, direction: 'upload', name: 'release-build.tar.gz', files: 1, filesDone: 0, totalBytes: 84_000_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false },
-    { id: 2, direction: 'download', name: 'logs', files: 37, filesDone: 0, totalBytes: 12_500_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, currentFile: 'app.log' },
-    { id: 3, direction: 'upload', name: 'dump.sql', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'queued', canReveal: false },
-    { id: 4, direction: 'download', name: 'secret.key', files: 1, filesDone: 0, totalBytes: 3_200, doneBytes: 0, bytesPerSecond: 0, status: 'error', error: 'Permission denied', canReveal: false },
+    { id: 1, direction: 'upload', name: 'release-build.tar.gz', files: 1, filesDone: 0, totalBytes: 84_000_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false },
+    { id: 2, direction: 'download', name: 'logs', files: 37, filesDone: 0, totalBytes: 12_500_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false, currentFile: 'app.log' },
+    { id: 3, direction: 'upload', name: 'dump.sql', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'queued', canReveal: false, canResume: false },
+    { id: 4, direction: 'download', name: 'secret.key', files: 1, filesDone: 0, totalBytes: 3_200, doneBytes: 0, bytesPerSecond: 0, status: 'error', error: 'Connection lost', canReveal: false, canResume: true },
   ];
   const timer = setInterval(() => {
     for (const it of items) {
@@ -92,7 +93,7 @@ export function createMockHost() {
   };
 
   const send = (m: HostMessage) => setTimeout(() => window.postMessage(m, '*'), 30);
-  let line = '';
+  const lines = new Map<number, string>();
   let state: unknown;
 
   return {
@@ -104,21 +105,48 @@ export function createMockHost() {
         case 'ready':
           if (DEMO) return demoSession(send);
           send({ type: 'status', state: 'connected', text: 'dev@mock-host' });
-          send({ type: 'term.data', data: 'Welcome to the mock host.\r\n$ ' });
+          send({ type: 'term.data', term: 1, data: 'Welcome to the mock host.\r\n$ ' });
           send({ type: 'fs.home', home: '/home/dev' });
           send({ type: 'fs.listing', path: '/home/dev', entries: fsTree['/home/dev'] });
           break;
-        case 'term.input':
+        case 'term.open':
+          send({ type: 'term.data', term: m.term, data: `Mock terminal ${m.term} (same connection).\r\n$ ` });
+          break;
+        case 'term.input': {
+          const line = lines.get(m.term) ?? '';
+          const out = (data: string) => send({ type: 'term.data', term: m.term, data });
           if (m.data === '\r') {
-            send({ type: 'term.data', data: `\r\n${line ? `mock: ${line}\r\n` : ''}$ ` });
-            line = '';
+            out(`\r\n${line ? `mock: ${line}\r\n` : ''}$ `);
+            lines.set(m.term, '');
           } else if (m.data === '\x7f') {
-            if (line) send({ type: 'term.data', data: '\b \b' });
-            line = line.slice(0, -1);
+            if (line) out('\b \b');
+            lines.set(m.term, line.slice(0, -1));
           } else {
-            line += m.data;
-            send({ type: 'term.data', data: m.data });
+            lines.set(m.term, line + m.data);
+            out(m.data);
           }
+          break;
+        }
+        case 'local.list': {
+          const p = m.path || '/Users/dev/project';
+          const localTree: Record<string, FileEntry[]> = {
+            '/Users/dev': [
+              { name: 'project', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+              { name: 'Downloads', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+            ],
+            '/Users/dev/project': [
+              { name: 'src', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+              { name: 'package.json', type: 'file', size: 1834, mtime: 1760000000, mode: 0o100644 },
+              { name: 'release-build.tar.gz', type: 'file', size: 84_000_000, mtime: 1760000000, mode: 0o100644 },
+            ],
+          };
+          if (localTree[p]) send({ type: 'local.listing', path: p, parent: p.replace(/\/[^/]+$/, '') || '/', home: '/Users/dev', sep: '/', entries: localTree[p] });
+          else send({ type: 'local.error', message: `${p}: (mock) not found` });
+          break;
+        }
+        case 'xfer.upload':
+        case 'xfer.download':
+          simulateTransfers(send);
           break;
         case 'fs.list': {
           const p = m.path.replace(/\/+$/, '') || '/';
@@ -134,7 +162,7 @@ export function createMockHost() {
           cancelled.add(m.id);
           break;
         case 'fs.cdTerminal':
-          send({ type: 'term.data', data: `cd '${m.path}'\r\n$ ` });
+          send({ type: 'term.data', term: m.term, data: `cd '${m.path}'\r\n$ ` });
           break;
         // ---- host editor
         case 'editor.ready':
@@ -144,12 +172,13 @@ export function createMockHost() {
             state: {
               draft: {
                 id: 1, alias: 'prod-web', hostname: '10.0.0.5', port: 22, username: 'deploy', authMethod: 'keyStored',
-                identityFile: '', proxyJump: 'bastion', proxyCommand: '', password: '', clearPassword: false,
+                identityFile: '', proxyJump: 'bastion', proxyCommand: '', groupId: 2, password: '', clearPassword: false,
                 privateKey: '', passphrase: '', clearPassphrase: false, forwardAgent: true, forwardX11: false,
               },
               saved: { password: true, privateKey: true, passphrase: false },
               publicKey: DEMO ? 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOWnOOGFYPqL/ibF51BhDkqQAoHsMR5+N7lg46gnyl8h sshx-studio@macbook' : 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockMockMockMockMockMockMockMockMockMockMo sshx-studio@dev',
               otherAliases: ['bastion', 'db', 'staging'],
+              groups: [{ id: 1, path: 'Production' }, { id: 2, path: 'Production / Web' }, { id: 3, path: 'Staging' }],
             },
           });
           break;
