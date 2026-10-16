@@ -148,6 +148,22 @@ export class SessionPanel implements vscode.Disposable {
           return this.terminals.get(m.term)?.resize(m.cols, m.rows);
         case 'fs.cdTerminal':
           return this.terminals.get(m.term)?.cd(m.path);
+        case 'local.list':
+          return await this.files.local.list(m.path);
+        case 'local.open':
+          return await this.files.local.open(m.path);
+        case 'local.reveal':
+          return await this.files.local.reveal(m.path);
+        case 'local.mkdir':
+          return await this.files.local.mkdir(m.dir);
+        case 'local.rename':
+          return await this.files.local.rename(m.path);
+        case 'local.delete':
+          return await this.files.local.remove(m.paths);
+        case 'xfer.upload':
+          return this.files.uploadLocal(m.paths, m.dir);
+        case 'xfer.download':
+          return this.files.downloadInto(m.paths, m.dir);
         case 'fs.list':
           return await this.files.list(m.path);
         case 'fs.download':

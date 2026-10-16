@@ -8,6 +8,7 @@ import { RemoteFs } from '../sftp/remoteFs';
 import { errorDetail, errorMessage } from '../utils/async';
 import type { Logger } from '../utils/logger';
 import { t } from '../i18n';
+import { LocalFiles } from './localFiles';
 import { TransferQueue } from './transferQueue';
 import { TransferService } from './transferService';
 
@@ -22,6 +23,8 @@ export class FileController {
   private ready = deferred();
   private readonly queue: TransferQueue;
   private readonly transfers: TransferService;
+  /** The local pane, whose listing is refreshed after downloads into it. */
+  readonly local: LocalFiles;
 
   constructor(
     private readonly alias: string,
@@ -36,7 +39,13 @@ export class FileController {
       (items) => send({ type: 'transfer.update', items }),
       log,
     );
-    this.transfers = new TransferService(this.queue, () => this.fs, (dir) => this.refresh(dir));
+    this.local = new LocalFiles(send);
+    this.transfers = new TransferService(
+      this.queue,
+      () => this.fs,
+      (dir) => this.refresh(dir),
+      (dir) => this.local.refresh(dir),
+    );
   }
 
   /** The active SFTP session; throws if the connection is gone. */
@@ -138,6 +147,11 @@ export class FileController {
   /** The remote directory currently shown in the file pane. */
   get shownDir(): string {
     return this.currentDir;
+  }
+
+  /** Download remote files/folders into a local folder (dragged or sent to the local pane), no dialog. */
+  downloadInto(remotePaths: string[], localDir: string) {
+    if (remotePaths.length) this.transfers.downloadTo(remotePaths, localDir);
   }
 
   /** Upload local files/folders (e.g. from VS Code's Explorer) into `dir`. */

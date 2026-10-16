@@ -104,6 +104,16 @@ export type WebviewMessage =
   | { type: 'fs.rename'; path: string }
   | { type: 'fs.open'; path: string }
   | { type: 'fs.cdTerminal'; path: string; term: number }
+  /** Local pane (this machine). `path` '' = the default folder (workspace or home). */
+  | { type: 'local.list'; path: string }
+  | { type: 'local.open'; path: string }
+  | { type: 'local.reveal'; path: string }
+  | { type: 'local.mkdir'; dir: string }
+  | { type: 'local.rename'; path: string }
+  | { type: 'local.delete'; paths: string[] }
+  /** Between the panes: local paths into a remote folder, remote paths into a local folder. */
+  | { type: 'xfer.upload'; paths: string[]; dir: string }
+  | { type: 'xfer.download'; paths: string[]; dir: string }
   | { type: 'log'; message: string }
   | { type: 'transfer.cancel'; id: number }
   | { type: 'transfer.pause'; id: number }
@@ -128,6 +138,9 @@ export type HostMessage =
   | { type: 'fs.home'; home: string }
   | { type: 'fs.listing'; path: string; entries: FileEntry[] }
   | { type: 'fs.error'; message: string }
+  /** Local paths use the host OS's separator; `parent` equals `path` at a root. */
+  | { type: 'local.listing'; path: string; parent: string; home: string; sep: string; entries: FileEntry[] }
+  | { type: 'local.error'; message: string }
   | { type: 'debug.dump' }
   | { type: 'transfer.update'; items: TransferItem[] }
   | { type: 'editor.init'; state: HostEditorState }

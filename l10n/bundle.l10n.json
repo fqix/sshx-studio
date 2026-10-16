@@ -1,4 +1,5 @@
 {
+  "\"{0}\" already exists.": "\"{0}\" already exists.",
   "$(terminal) Session open": "$(terminal) Session open",
   "(current user)": "(current user)",
   "-D  Dynamic forward (SOCKS proxy)": "-D  Dynamic forward (SOCKS proxy)",
@@ -52,7 +53,9 @@
   "Local forward (-L)": "Local forward (-L)",
   "Local {0} → (server) → {1}": "Local {0} → (server) → {1}",
   "Missing target host": "Missing target host",
+  "Move to Trash": "Move to Trash",
   "Move to group": "Move to group",
+  "Move {0} to the trash?": "Move {0} to the trash?",
   "Name cannot contain spaces.": "Name cannot contain spaces.",
   "Name is required.": "Name is required.",
   "New Host": "New Host",

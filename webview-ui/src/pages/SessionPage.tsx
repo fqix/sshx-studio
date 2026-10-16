@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ConnectionState, WebviewConfig } from '@shared/protocol';
 import { FileBrowser } from '../components/FileBrowser/FileBrowser';
+import { LocalBrowser } from '../components/FileBrowser/LocalBrowser';
 import { StatusBar } from '../components/StatusBar/StatusBar';
 import { TerminalTabs } from '../components/Terminal/TerminalTabs';
 import { TerminalHandle, TerminalView } from '../components/Terminal/TerminalView';
@@ -26,6 +27,21 @@ export function SessionPage({ config }: { config: WebviewConfig }) {
     reserve: 200,
     onCommit: useCallback((w: number) => patchUiState({ filesWidth: w }), []),
   });
+  // Local pane: docked left of the remote pane, with its own splitter on its right edge.
+  const [localOpen, setLocalOpen] = useState(!!getUiState().localOpen);
+  const local = useResizableWidth({
+    initial: getUiState().localWidth ?? 300,
+    min: 200,
+    reserve: width + 200,
+    edge: 'right',
+    onCommit: useCallback((w: number) => patchUiState({ localWidth: w }), []),
+  });
+  const [localDir, setLocalDir] = useState('');
+  const [remoteDir, setRemoteDir] = useState('');
+  const toggleLocal = () => {
+    patchUiState({ localOpen: !localOpen });
+    setLocalOpen(!localOpen);
+  };
 
   const newTerminal = useCallback(() => {
     const id = nextId.current++;
@@ -70,7 +86,20 @@ export function SessionPage({ config }: { config: WebviewConfig }) {
         ))}
       </section>
       <div className="splitter" onMouseDown={startDrag} />
-      <FileBrowser style={{ width }} onCdTerminal={cdInTerminal} />
+      {localOpen && (
+        <>
+          <LocalBrowser style={{ width: local.width }} remoteDir={remoteDir} onCwd={setLocalDir} onClose={toggleLocal} />
+          <div className="splitter" onMouseDown={local.startDrag} />
+        </>
+      )}
+      <FileBrowser
+        style={{ width }}
+        onCdTerminal={cdInTerminal}
+        localOpen={localOpen}
+        localDir={localDir}
+        onToggleLocal={toggleLocal}
+        onCwd={setRemoteDir}
+      />
     </div>
   );
 }

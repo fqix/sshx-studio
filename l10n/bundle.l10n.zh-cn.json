@@ -1,4 +1,5 @@
 {
+  "\"{0}\" already exists.": "“{0}”已存在。",
   "$(terminal) Session open": "$(terminal) 会话已打开",
   "(current user)": "（当前用户）",
   "-D  Dynamic forward (SOCKS proxy)": "-D  动态转发（SOCKS 代理）",
@@ -52,7 +53,9 @@
   "Local forward (-L)": "本地转发（-L）",
   "Local {0} → (server) → {1}": "本机 {0} →（服务器）→ {1}",
   "Missing target host": "缺少目标主机",
+  "Move to Trash": "移到回收站",
   "Move to group": "移动到分组",
+  "Move {0} to the trash?": "将 {0} 移到回收站？",
   "Name cannot contain spaces.": "名称不能包含空格。",
   "Name is required.": "名称不能为空。",
   "New Host": "新建主机",

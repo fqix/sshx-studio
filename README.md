@@ -30,6 +30,7 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that �
 - Find in the terminal (⌘F / Ctrl+F), with case, whole-word and regex options.
 - Several terminals per tab on one connection, or duplicate the session into a new tab.
 - Browse, rename, delete, create folders, `cd` the terminal into any folder.
+- Optional local pane beside the remote one: drag files between them to upload or download.
 - Double-click a file to edit it in VS Code — saving uploads it back.
 - Upload by dialog, drag and drop, or **right-click in the Explorer → Upload to SSH Host…**
 

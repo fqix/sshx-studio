@@ -10,6 +10,7 @@ import type { TransferItem } from '../shared/protocol';
 import { TransferQueue } from '../src/session/transferQueue';
 import { TransferService } from '../src/session/transferService';
 import { RemoteFs } from '../src/sftp/remoteFs';
+import { listLocalDir } from '../src/utils/localDir';
 import { downloadResumable, FileResume, PART_SUFFIX, pipelinedCopy } from '../src/sftp/resumable';
 
 let dump = () => '';
@@ -165,6 +166,16 @@ export async function transferTests(client: Client, remoteRoot: string) {
   assert.strictEqual(skipped, 0, 'changed source restarts from 0');
   assert.ok(fs.readFileSync(path.join(dl, 'changing.bin')).equals(fs.readFileSync(path.join(remoteRoot, 'changing.bin'))));
   console.log('ok  resumable copy: continues from the written prefix, restarts when the source changed');
+
+  // Local pane listing: dirs first, symlinked dirs navigable, dangling links kept as links.
+  fs.symlinkSync(tree, path.join(dl, 'tree-link'), process.platform === 'win32' ? 'junction' : 'dir');
+  if (process.platform !== 'win32') fs.symlinkSync(path.join(dl, 'missing'), path.join(dl, 'dangling'));
+  const listing = await listLocalDir(dl);
+  assert.strictEqual(listing.find((e) => e.name === 'tree-link')?.type, 'dir');
+  if (process.platform !== 'win32') assert.strictEqual(listing.find((e) => e.name === 'dangling')?.type, 'link');
+  const firstFile = listing.findIndex((e) => e.type !== 'dir');
+  assert.ok(listing.slice(firstFile).every((e) => e.type !== 'dir'), 'directories first');
+  console.log('ok  local pane listing');
 
   queue.dispose();
   mainFs.end();

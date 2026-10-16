@@ -127,6 +127,27 @@ export function createMockHost() {
           }
           break;
         }
+        case 'local.list': {
+          const p = m.path || '/Users/dev/project';
+          const localTree: Record<string, FileEntry[]> = {
+            '/Users/dev': [
+              { name: 'project', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+              { name: 'Downloads', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+            ],
+            '/Users/dev/project': [
+              { name: 'src', type: 'dir', size: 0, mtime: 1760000000, mode: 0o40755 },
+              { name: 'package.json', type: 'file', size: 1834, mtime: 1760000000, mode: 0o100644 },
+              { name: 'release-build.tar.gz', type: 'file', size: 84_000_000, mtime: 1760000000, mode: 0o100644 },
+            ],
+          };
+          if (localTree[p]) send({ type: 'local.listing', path: p, parent: p.replace(/\/[^/]+$/, '') || '/', home: '/Users/dev', sep: '/', entries: localTree[p] });
+          else send({ type: 'local.error', message: `${p}: (mock) not found` });
+          break;
+        }
+        case 'xfer.upload':
+        case 'xfer.download':
+          simulateTransfers(send);
+          break;
         case 'fs.list': {
           const p = m.path.replace(/\/+$/, '') || '/';
           if (fsTree[p]) send({ type: 'fs.listing', path: p, entries: fsTree[p] });
