@@ -88,6 +88,37 @@ export class RemoteFs {
     }
   }
 
+  open(p: string, flags: 'r' | 'r+' | 'w'): Promise<Buffer> {
+    return call<Buffer>((cb) => this.sftp.open(p, flags, cb));
+  }
+
+  /** Bytes read; 0 at end of file. */
+  read(handle: Buffer, buf: Buffer, offset: number, length: number, position: number): Promise<number> {
+    return call<number>((cb) => this.sftp.read(handle, buf, offset, length, position, (e, n) => cb(e, n ?? 0)));
+  }
+
+  write(handle: Buffer, buf: Buffer, offset: number, length: number, position: number): Promise<void> {
+    return call<void>((cb) => this.sftp.write(handle, buf, offset, length, position, cb));
+  }
+
+  close(handle: Buffer): Promise<void> {
+    return call<void>((cb) => this.sftp.close(handle, cb));
+  }
+
+  /**
+   * Rename, replacing `to` if it exists. Plain SFTP rename refuses an existing target, so use
+   * OpenSSH's posix-rename when offered, otherwise remove the target first.
+   */
+  async renameOver(from: string, to: string): Promise<void> {
+    try {
+      return await call<void>((cb) => this.sftp.ext_openssh_rename(from, to, cb));
+    } catch (e) {
+      if (!/not support/i.test(String((e as Error)?.message))) throw e;
+    }
+    if (await this.lstat(to).then(() => true, () => false)) await call<void>((cb) => this.sftp.unlink(to, cb));
+    await this.rename(from, to);
+  }
+
   writeFile(p: string, data: Uint8Array): Promise<void> {
     return call<void>((cb) => this.sftp.writeFile(p, Buffer.from(data), cb));
   }

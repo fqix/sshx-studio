@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Host groups: organize hosts into nestable folders in the tree. Create, rename and delete groups, move hosts and groups by drag and drop or **Move to Group…**, and pick the group in the host editor. Deleting a group keeps its hosts.
 - Several terminals in one session tab, each its own shell on the same connection: **＋** in the terminal tab strip or **New Terminal** in the editor title bar. **Duplicate Session** opens the host in a new tab with its own connection.
 - Find in the terminal: **⌘F** / **Ctrl+F** or the search icon, with match case, whole word and regular expressions; matches are highlighted.
+- Resumable transfers: pause and resume uploads and downloads; a transfer cut off by a dropped connection resumes from where it stopped after reconnecting. Files are written as `*.sshxpart` and renamed when complete.
 
 ## [0.2.0] - 2026-10-13
 

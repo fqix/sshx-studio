@@ -41,7 +41,7 @@ function demoSession(send: (m: HostMessage) => void) {
       file('backup-2026-10-11.tar.gz', 734_003_200, 36000), file('README.md', 4096, 864000),
     ],
   });
-  const item = (p: Partial<TransferItem>): TransferItem => ({ id: 0, direction: 'upload', name: '', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, ...p });
+  const item = (p: Partial<TransferItem>): TransferItem => ({ id: 0, direction: 'upload', name: '', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false, ...p });
   send({
     type: 'transfer.update',
     items: [
@@ -55,10 +55,10 @@ function demoSession(send: (m: HostMessage) => void) {
 /** Fake transfers with progress so the transfer panel can be developed in a browser. */
 function simulateTransfers(send: (m: HostMessage) => void) {
   const items: TransferItem[] = [
-    { id: 1, direction: 'upload', name: 'release-build.tar.gz', files: 1, filesDone: 0, totalBytes: 84_000_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false },
-    { id: 2, direction: 'download', name: 'logs', files: 37, filesDone: 0, totalBytes: 12_500_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, currentFile: 'app.log' },
-    { id: 3, direction: 'upload', name: 'dump.sql', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'queued', canReveal: false },
-    { id: 4, direction: 'download', name: 'secret.key', files: 1, filesDone: 0, totalBytes: 3_200, doneBytes: 0, bytesPerSecond: 0, status: 'error', error: 'Permission denied', canReveal: false },
+    { id: 1, direction: 'upload', name: 'release-build.tar.gz', files: 1, filesDone: 0, totalBytes: 84_000_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false },
+    { id: 2, direction: 'download', name: 'logs', files: 37, filesDone: 0, totalBytes: 12_500_000, doneBytes: 0, bytesPerSecond: 0, status: 'running', canReveal: false, canResume: false, currentFile: 'app.log' },
+    { id: 3, direction: 'upload', name: 'dump.sql', files: 1, filesDone: 0, totalBytes: 0, doneBytes: 0, bytesPerSecond: 0, status: 'queued', canReveal: false, canResume: false },
+    { id: 4, direction: 'download', name: 'secret.key', files: 1, filesDone: 0, totalBytes: 3_200, doneBytes: 0, bytesPerSecond: 0, status: 'error', error: 'Connection lost', canReveal: false, canResume: true },
   ];
   const timer = setInterval(() => {
     for (const it of items) {

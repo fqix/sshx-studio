@@ -166,6 +166,10 @@ export class SessionPanel implements vscode.Disposable {
           return await this.editor.open(m.path);
         case 'transfer.cancel':
           return this.files.cancelTransfer(m.id);
+        case 'transfer.pause':
+          return this.files.pauseTransfer(m.id);
+        case 'transfer.resume':
+          return this.files.resumeTransfer(m.id);
         case 'transfer.reveal':
           return this.files.revealTransfer(m.id);
         case 'transfer.clearFinished':

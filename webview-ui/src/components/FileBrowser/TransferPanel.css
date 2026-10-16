@@ -41,6 +41,7 @@
 .transfer.done .transfer-status { color: var(--vscode-charts-green, #388a34); }
 .transfer.error .transfer-status, .transfer.error .transfer-detail { color: var(--vscode-errorForeground); }
 .transfer.cancelled .transfer-name { opacity: 0.7; }
+.transfer.paused .transfer-status { color: var(--vscode-charts-yellow, #cca700); }
 .transfer-detail {
   margin-left: 20px;
   font-size: 11px;

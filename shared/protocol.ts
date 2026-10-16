@@ -17,7 +17,7 @@ export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'err
 // --------------------------------------------------------------- transfers
 
 export type TransferDirection = 'upload' | 'download';
-export type TransferStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled';
+export type TransferStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled' | 'paused';
 
 /** One upload/download shown in the file pane (a file, a folder, or a dropped file). */
 export interface TransferItem {
@@ -37,6 +37,8 @@ export interface TransferItem {
   error?: string;
   /** Finished download that can be shown in the OS file manager. */
   canReveal: boolean;
+  /** Paused or failed, with the partial file kept: Resume continues where it stopped. */
+  canResume: boolean;
 }
 
 // ------------------------------------------------------------- host editor
@@ -104,6 +106,8 @@ export type WebviewMessage =
   | { type: 'fs.cdTerminal'; path: string; term: number }
   | { type: 'log'; message: string }
   | { type: 'transfer.cancel'; id: number }
+  | { type: 'transfer.pause'; id: number }
+  | { type: 'transfer.resume'; id: number }
   | { type: 'transfer.reveal'; id: number }
   | { type: 'transfer.clearFinished' }
   | { type: 'editor.ready' }

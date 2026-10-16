@@ -55,6 +55,7 @@ export class FileController {
       this.send({ type: 'fs.home', home });
       await this.list(home);
       this.ready.resolve();
+      this.queue.resumeInterrupted();
     } catch (e) {
       this.log(`sftp: ${errorDetail(e)}`);
       this.send({ type: 'fs.error', message: t('SFTP unavailable: {0}', errorMessage(e)) });
@@ -67,7 +68,7 @@ export class FileController {
     this.client = undefined;
     // Waiters keep waiting for the next attach; only a settled promise needs replacing.
     if (this.ready.settled) this.ready = deferred();
-    this.queue.abortAll(t('Disconnected'));
+    this.queue.abortAll(t('Disconnected'), true);
   }
 
   dispose() {
@@ -146,6 +147,14 @@ export class FileController {
 
   cancelTransfer(id: number) {
     this.queue.cancel(id);
+  }
+
+  pauseTransfer(id: number) {
+    this.queue.pause(id);
+  }
+
+  resumeTransfer(id: number) {
+    this.queue.resume(id);
   }
 
   clearFinishedTransfers() {

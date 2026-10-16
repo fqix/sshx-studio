@@ -36,6 +36,7 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that â€
 **Transfers you can see**
 - A progress bar per file or folder, with speed, time left and file count.
 - Up to three transfers in parallel, each on its own SFTP channel, so browsing never stalls.
+- Pause and resume anytime; a transfer interrupted by a dropped connection picks up where it stopped after reconnecting.
 - Cancel anytime; partial files are cleaned up.
 
 **Hosts and credentials**
