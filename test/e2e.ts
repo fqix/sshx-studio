@@ -16,6 +16,7 @@ import { serveSftp } from './sftpServer';
 import { forwardingTests, ServerHooks } from './forwarding.test';
 import { hostEditorTests } from './hostEditor.test';
 import { storageTests } from './storage.test';
+import { terminalTests } from './terminals.test';
 import { transferTests } from './transfers.test';
 
 /** TCP echo server on a random local port. */
@@ -112,7 +113,9 @@ async function main() {
         });
         session.on('pty', (acceptPty) => acceptPty?.());
         session.on('shell', (acceptShell) => {
-          acceptShell();
+          // Echo shell: lets tests tell several shells on one connection apart.
+          const shell = acceptShell();
+          shell.on('data', (d: Buffer) => shell.write(d));
           hooks.onShell?.(client);
         });
         session.on('exec', (acc, _rej, info) => {
@@ -307,6 +310,8 @@ Host *
 
   await forwardingTests(cfg, prompter, hooks, portOf(echo));
   await hostEditorTests(cfg, port, prompter);
+
+  await terminalTests(cfg, prompter);
 
   const sftpConn = await connect(cfg, 'direct', prompter);
   await transferTests(sftpConn.client, sftpRoot);

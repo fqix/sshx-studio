@@ -53,6 +53,18 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "sshxStudio.newTerminal",
+        "title": "%cmd.newTerminal%",
+        "category": "SSHX",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sshxStudio.duplicateSession",
+        "title": "%cmd.duplicateSession%",
+        "category": "SSHX",
+        "icon": "$(split-horizontal)"
+      },
+      {
         "command": "sshxStudio.addHost",
         "title": "%cmd.addHost%",
         "category": "SSHX",
@@ -365,6 +377,14 @@
         {
           "command": "sshxStudio.moveToGroup",
           "when": "false"
+        },
+        {
+          "command": "sshxStudio.newTerminal",
+          "when": "activeWebviewPanelId == 'sshxSession'"
+        },
+        {
+          "command": "sshxStudio.duplicateSession",
+          "when": "activeWebviewPanelId == 'sshxSession'"
         }
       ],
       "explorer/context": [
@@ -372,6 +392,18 @@
           "command": "sshxStudio.uploadFromExplorer",
           "when": "resourceScheme == file",
           "group": "7_sshx@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sshxStudio.newTerminal",
+          "when": "activeWebviewPanelId == 'sshxSession'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sshxStudio.duplicateSession",
+          "when": "activeWebviewPanelId == 'sshxSession'",
+          "group": "navigation@2"
         }
       ]
     },

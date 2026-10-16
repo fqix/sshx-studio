@@ -10,12 +10,20 @@ export interface TerminalHandle {
 }
 
 interface Props {
+  /** Terminal id, chosen by the page; the host keys the shell channel by it. */
+  id: number;
   fontSize: number;
+  /** Shown and focused; inactive terminals stay alive but hidden. */
+  active: boolean;
 }
 
-/** Sent once per page load; the host opens the SSH session when it receives it. */
+/**
+ * `ready` is sent once per page load, by the first terminal; the host connects when it receives it.
+ * Later terminals send `term.open` for a new shell on the same connection.
+ */
 let readySent = false;
 export const wasReadySent = () => readySent;
+const announced = new Set<number>();
 
 function themeFromVsCode() {
   const css = getComputedStyle(document.body);
@@ -31,7 +39,7 @@ function themeFromVsCode() {
   };
 }
 
-export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalView({ fontSize }, ref) {
+export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalView({ id, fontSize, active }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal>();
   const fitRef = useRef<FitAddon>();
@@ -48,8 +56,8 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
     fitRef.current = fit;
 
     const subs = [
-      term.onData((data) => vscode.postMessage({ type: 'term.input', data })),
-      term.onResize(({ cols, rows }) => vscode.postMessage({ type: 'term.resize', cols, rows })),
+      term.onData((data) => vscode.postMessage({ type: 'term.input', term: id, data })),
+      term.onResize(({ cols, rows }) => vscode.postMessage({ type: 'term.resize', term: id, cols, rows })),
     ];
     // Cmd/Ctrl+C copies when there is a selection; otherwise it goes to the remote as ^C.
     term.attachCustomKeyEventHandler((e) => {
@@ -73,11 +81,18 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
     // Prefer waiting one frame so the layout has its final size, but don't depend on it:
     // requestAnimationFrame never fires while the webview isn't being rendered (hidden tab,
     // minimized window, VS Code busy with a startup notification). A later fit() sends term.resize.
+    let sent = false;
     const sendReady = () => {
-      if (readySent) return;
-      readySent = true;
+      if (sent) return;
+      sent = true;
       safeFit();
-      vscode.postMessage({ type: 'ready', cols: term.cols, rows: term.rows });
+      const size = { term: id, cols: term.cols, rows: term.rows };
+      // Re-created xterm (e.g. new font size) for a terminal the host already knows: only its size changed.
+      if (announced.has(id)) return vscode.postMessage({ type: 'term.resize', ...size });
+      announced.add(id);
+      if (readySent) return vscode.postMessage({ type: 'term.open', ...size });
+      readySent = true;
+      vscode.postMessage({ type: 'ready', ...size });
     };
     const raf = requestAnimationFrame(sendReady);
     const fallback = setTimeout(sendReady, 150);
@@ -89,13 +104,26 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
       subs.forEach((s) => s.dispose());
       term.dispose();
     };
-  }, [fontSize]);
+  }, [id, fontSize]);
+
+  // Becoming visible: the container has a size again.
+  useEffect(() => {
+    if (!active) return;
+    try {
+      fitRef.current?.fit();
+    } catch {
+      /* not laid out yet; the ResizeObserver fits later */
+    }
+    termRef.current?.focus();
+  }, [active]);
 
   useHostMessage((m) => {
     const term = termRef.current;
     if (!term) return;
-    if (m.type === 'term.data') term.write(m.data);
-    else if (m.type === 'status' && m.state === 'connected') {
+    if (m.type === 'term.data') {
+      if (m.term === id) term.write(m.data);
+    } else if (m.type === 'status' && m.state === 'connected') {
+      if (!active) return;
       fitRef.current?.fit();
       term.focus();
     } else if (m.type === 'status' && m.state === 'error') {
@@ -103,5 +131,5 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
     }
   });
 
-  return <div className="terminal-view" ref={containerRef} />;
+  return <div className={'terminal-view' + (active ? '' : ' hidden')} ref={containerRef} />;
 });

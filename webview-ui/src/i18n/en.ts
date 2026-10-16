@@ -4,6 +4,9 @@ export const en = {
   'session.connecting': 'Connecting to {0}…',
   'session.reconnect': 'Reconnect',
   // file browser
+  'session.terminal': 'Terminal {0}',
+  'session.newTerminal': 'New terminal (same connection)',
+  'session.closeTerminal': 'Close terminal',
   'files.up': 'Parent folder',
   'files.home': 'Home',
   'files.refresh': 'Refresh',

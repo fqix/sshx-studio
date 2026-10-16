@@ -29,6 +29,13 @@ export function registerHostCommands(ctx: CommandContext): vscode.Disposable[] {
     }),
 
     // From a group's context menu the new host starts in that group.
+    // Editor title bar of a session tab.
+    vscode.commands.registerCommand('sshxStudio.newTerminal', () => sessions.active?.send({ type: 'term.new' })),
+    vscode.commands.registerCommand('sshxStudio.duplicateSession', () => {
+      const active = sessions.active;
+      if (active) sessions.open(active.alias);
+    }),
+
     vscode.commands.registerCommand('sshxStudio.addHost', (item?: GroupItem) =>
       HostEditorPanel.show(ctx.extensionUri, editorDeps, undefined, undefined, item instanceof GroupItem ? item.group.id : undefined),
     ),

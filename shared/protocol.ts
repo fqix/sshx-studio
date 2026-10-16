@@ -85,9 +85,13 @@ export type HostDraftField = keyof HostDraft;
 
 /** webview → extension */
 export type WebviewMessage =
-  | { type: 'ready'; cols: number; rows: number }
-  | { type: 'term.input'; data: string }
-  | { type: 'term.resize'; cols: number; rows: number }
+  /** The page is up; connect and open the shell for its first terminal. */
+  | { type: 'ready'; term: number; cols: number; rows: number }
+  /** Another terminal in this tab: a new shell on the same connection. Ids are chosen by the webview. */
+  | { type: 'term.open'; term: number; cols: number; rows: number }
+  | { type: 'term.close'; term: number }
+  | { type: 'term.input'; term: number; data: string }
+  | { type: 'term.resize'; term: number; cols: number; rows: number }
   | { type: 'reconnect' }
   | { type: 'fs.list'; path: string }
   | { type: 'fs.download'; paths: string[] }
@@ -97,7 +101,7 @@ export type WebviewMessage =
   | { type: 'fs.delete'; paths: string[] }
   | { type: 'fs.rename'; path: string }
   | { type: 'fs.open'; path: string }
-  | { type: 'fs.cdTerminal'; path: string }
+  | { type: 'fs.cdTerminal'; path: string; term: number }
   | { type: 'log'; message: string }
   | { type: 'transfer.cancel'; id: number }
   | { type: 'transfer.reveal'; id: number }
@@ -113,7 +117,9 @@ export type WebviewMessage =
 /** extension → webview */
 export type HostMessage =
   | { type: 'status'; state: ConnectionState; text: string }
-  | { type: 'term.data'; data: string }
+  | { type: 'term.data'; term: number; data: string }
+  /** Add a terminal to this tab (from the editor title bar). */
+  | { type: 'term.new' }
   | { type: 'fs.loading' }
   | { type: 'fs.home'; home: string }
   | { type: 'fs.listing'; path: string; entries: FileEntry[] }

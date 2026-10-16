@@ -15,6 +15,7 @@ function demoSession(send: (m: HostMessage) => void) {
   send({ type: 'status', state: 'connected', text: 'deploy@web-01.example.com' });
   send({
     type: 'term.data',
+    term: 1,
     data:
       `Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)\r\n\r\n` +
       `  System load:  0.08               Processes:             142\r\n` +
@@ -92,7 +93,7 @@ export function createMockHost() {
   };
 
   const send = (m: HostMessage) => setTimeout(() => window.postMessage(m, '*'), 30);
-  let line = '';
+  const lines = new Map<number, string>();
   let state: unknown;
 
   return {
@@ -104,22 +105,28 @@ export function createMockHost() {
         case 'ready':
           if (DEMO) return demoSession(send);
           send({ type: 'status', state: 'connected', text: 'dev@mock-host' });
-          send({ type: 'term.data', data: 'Welcome to the mock host.\r\n$ ' });
+          send({ type: 'term.data', term: 1, data: 'Welcome to the mock host.\r\n$ ' });
           send({ type: 'fs.home', home: '/home/dev' });
           send({ type: 'fs.listing', path: '/home/dev', entries: fsTree['/home/dev'] });
           break;
-        case 'term.input':
+        case 'term.open':
+          send({ type: 'term.data', term: m.term, data: `Mock terminal ${m.term} (same connection).\r\n$ ` });
+          break;
+        case 'term.input': {
+          const line = lines.get(m.term) ?? '';
+          const out = (data: string) => send({ type: 'term.data', term: m.term, data });
           if (m.data === '\r') {
-            send({ type: 'term.data', data: `\r\n${line ? `mock: ${line}\r\n` : ''}$ ` });
-            line = '';
+            out(`\r\n${line ? `mock: ${line}\r\n` : ''}$ `);
+            lines.set(m.term, '');
           } else if (m.data === '\x7f') {
-            if (line) send({ type: 'term.data', data: '\b \b' });
-            line = line.slice(0, -1);
+            if (line) out('\b \b');
+            lines.set(m.term, line.slice(0, -1));
           } else {
-            line += m.data;
-            send({ type: 'term.data', data: m.data });
+            lines.set(m.term, line + m.data);
+            out(m.data);
           }
           break;
+        }
         case 'fs.list': {
           const p = m.path.replace(/\/+$/, '') || '/';
           if (fsTree[p]) send({ type: 'fs.listing', path: p, entries: fsTree[p] });
@@ -134,7 +141,7 @@ export function createMockHost() {
           cancelled.add(m.id);
           break;
         case 'fs.cdTerminal':
-          send({ type: 'term.data', data: `cd '${m.path}'\r\n$ ` });
+          send({ type: 'term.data', term: m.term, data: `cd '${m.path}'\r\n$ ` });
           break;
         // ---- host editor
         case 'editor.ready':

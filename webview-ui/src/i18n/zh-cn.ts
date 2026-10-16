@@ -4,6 +4,9 @@ import type { MessageKey } from './en';
 export const zhCn: Record<MessageKey, string> = {
   'session.connecting': '正在连接 {0}…',
   'session.reconnect': '重新连接',
+  'session.terminal': '终端 {0}',
+  'session.newTerminal': '新建终端（同一连接）',
+  'session.closeTerminal': '关闭终端',
   'files.up': '上级目录',
   'files.home': '主目录',
   'files.refresh': '刷新',

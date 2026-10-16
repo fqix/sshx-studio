@@ -28,5 +28,7 @@
   "cmd.addGroup": "新建分组",
   "cmd.renameGroup": "重命名分组",
   "cmd.deleteGroup": "删除分组",
-  "cmd.moveToGroup": "移动到分组…"
+  "cmd.moveToGroup": "移动到分组…",
+  "cmd.newTerminal": "新建终端（同一连接）",
+  "cmd.duplicateSession": "复制会话（新标签页）"
 }

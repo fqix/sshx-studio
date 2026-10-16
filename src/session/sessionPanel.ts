@@ -7,18 +7,20 @@ import { errorDetail, errorMessage } from '../utils/async';
 import { Logger, scopedLogger } from '../utils/logger';
 import { FileController } from './fileController';
 import { RemoteEditor } from './remoteEditor';
-import { TerminalChannel } from './terminalChannel';
+import { setUpX11, TerminalChannel, type X11Setup } from './terminalChannel';
 import { renderWebviewHtml, WEBVIEW_DIST } from './webviewHtml';
 
-/** One webview tab = one SSH connection with a terminal and an SFTP file pane. */
+/** One webview tab = one SSH connection with one or more terminals (shell channels) and an SFTP file pane. */
 export class SessionPanel implements vscode.Disposable {
   private readonly panel: vscode.WebviewPanel;
   private readonly log: Logger;
-  private readonly terminal: TerminalChannel;
+  /** By webview-chosen id. All share the tab's connection. */
+  private readonly terminals = new Map<number, TerminalChannel>();
   private readonly files: FileController;
   private readonly editor: RemoteEditor;
   private readonly disposables: vscode.Disposable[] = [];
   private connection?: SshConnection;
+  private x11?: X11Setup;
   private disposed = false;
   private readonly onDisposeEmitter = new vscode.EventEmitter<void>();
   readonly onDidDispose = this.onDisposeEmitter.event;
@@ -32,7 +34,6 @@ export class SessionPanel implements vscode.Disposable {
   ) {
     this.log = scopedLogger(output, alias);
     const send = (m: HostMessage) => this.send(m);
-    this.terminal = new TerminalChannel(send, this.log);
     this.files = new FileController(alias, send, this.log);
     this.editor = new RemoteEditor(alias, () => this.files.fs, (dir) => this.files.refresh(dir));
 
@@ -55,6 +56,10 @@ export class SessionPanel implements vscode.Disposable {
 
   reveal() {
     this.panel.reveal();
+  }
+
+  get active(): boolean {
+    return this.panel.active;
   }
 
   /** Resolves when the file pane's SFTP session is ready (rejects if it couldn't be opened). */
@@ -93,9 +98,10 @@ export class SessionPanel implements vscode.Disposable {
         this.send({ type: 'status', state: 'disconnected', text: t('Disconnected') });
         this.detachChannels();
       });
+      this.x11 = conn.host.forwardX11 ? setUpX11(conn.client, this.log) : undefined;
       this.send({ type: 'status', state: 'connected', text: `${conn.host.user}@${conn.host.hostname}` });
-      // Independent channels: a failure in one must not take down the other.
-      await Promise.all([this.terminal.open(conn.client, conn.host), this.files.attach(conn.client)]);
+      // Independent channels: a failure in one must not take down the others.
+      await Promise.all([...[...this.terminals.values()].map((term) => term.open(conn.client, this.x11)), this.files.attach(conn.client)]);
     } catch (e) {
       this.log(errorDetail(e));
       this.send({ type: 'status', state: 'error', text: errorMessage(e) });
@@ -105,7 +111,7 @@ export class SessionPanel implements vscode.Disposable {
   }
 
   private detachChannels() {
-    this.terminal.detach();
+    this.terminals.forEach((term) => term.detach());
     this.files.detach();
   }
 
@@ -113,6 +119,7 @@ export class SessionPanel implements vscode.Disposable {
     this.detachChannels();
     this.connection?.dispose();
     this.connection = undefined;
+    this.x11 = undefined;
   }
 
   // -------------------------------------------------------------- routing
@@ -121,16 +128,26 @@ export class SessionPanel implements vscode.Disposable {
     try {
       switch (m.type) {
         case 'ready':
-          this.terminal.resize(m.cols, m.rows);
+          this.addTerminal(m.term, m.cols, m.rows);
           return await this.connect();
         case 'reconnect':
           return await this.connect();
+        case 'term.open': {
+          const term = this.addTerminal(m.term, m.cols, m.rows);
+          // While connecting, connect() opens it together with the others.
+          if (this.connection) await term.open(this.connection.client, this.x11);
+          return;
+        }
+        case 'term.close':
+          this.terminals.get(m.term)?.close();
+          this.terminals.delete(m.term);
+          return;
         case 'term.input':
-          return this.terminal.input(m.data);
+          return this.terminals.get(m.term)?.input(m.data);
         case 'term.resize':
-          return this.terminal.resize(m.cols, m.rows);
+          return this.terminals.get(m.term)?.resize(m.cols, m.rows);
         case 'fs.cdTerminal':
-          return this.terminal.cd(m.path);
+          return this.terminals.get(m.term)?.cd(m.path);
         case 'fs.list':
           return await this.files.list(m.path);
         case 'fs.download':
@@ -160,6 +177,13 @@ export class SessionPanel implements vscode.Disposable {
       this.log(`${m.type}: ${errorDetail(e)}`);
       vscode.window.showErrorMessage(`${this.alias}: ${errorMessage(e)}`);
     }
+  }
+
+  private addTerminal(id: number, cols: number, rows: number): TerminalChannel {
+    const term = new TerminalChannel(id, (m) => this.send(m), this.log);
+    term.resize(cols, rows);
+    this.terminals.set(id, term);
+    return term;
   }
 
   dispose() {

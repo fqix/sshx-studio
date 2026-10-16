@@ -28,5 +28,7 @@
   "cmd.addGroup": "New Group",
   "cmd.renameGroup": "Rename Group",
   "cmd.deleteGroup": "Delete Group",
-  "cmd.moveToGroup": "Move to Group…"
+  "cmd.moveToGroup": "Move to Group…",
+  "cmd.newTerminal": "New Terminal (same connection)",
+  "cmd.duplicateSession": "Duplicate Session (new tab)"
 }

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { ConnectionState, WebviewConfig } from '@shared/protocol';
 import { FileBrowser } from '../components/FileBrowser/FileBrowser';
 import { StatusBar } from '../components/StatusBar/StatusBar';
+import { TerminalTabs } from '../components/Terminal/TerminalTabs';
 import { TerminalHandle, TerminalView } from '../components/Terminal/TerminalView';
 import { useHostMessage } from '../hooks/useHostMessage';
 import { useResizableWidth } from '../hooks/useResizableWidth';
@@ -14,7 +15,11 @@ export function SessionPage({ config }: { config: WebviewConfig }) {
     state: 'connecting',
     text: t('session.connecting', config.alias),
   });
-  const terminal = useRef<TerminalHandle>(null);
+  // Terminals in this tab, each a shell on the same connection. Ids are never reused.
+  const [terms, setTerms] = useState<number[]>([1]);
+  const [activeTerm, setActiveTerm] = useState(1);
+  const nextId = useRef(2);
+  const handles = useRef(new Map<number, TerminalHandle>());
   const { width, startDrag } = useResizableWidth({
     initial: getUiState().filesWidth ?? 320,
     min: 220,
@@ -22,20 +27,47 @@ export function SessionPage({ config }: { config: WebviewConfig }) {
     onCommit: useCallback((w: number) => patchUiState({ filesWidth: w }), []),
   });
 
+  const newTerminal = useCallback(() => {
+    const id = nextId.current++;
+    setTerms((ts) => [...ts, id]);
+    setActiveTerm(id);
+  }, []);
+
+  const closeTerminal = (id: number) => {
+    if (terms.length < 2) return;
+    vscode.postMessage({ type: 'term.close', term: id });
+    const rest = terms.filter((x) => x !== id);
+    setTerms(rest);
+    if (id === activeTerm) setActiveTerm(rest[Math.max(0, terms.indexOf(id) - 1)]);
+  };
+
   useHostMessage((m) => {
     if (m.type === 'status') setStatus({ state: m.state, text: m.text });
+    else if (m.type === 'term.new') newTerminal();
   });
 
-  const cdInTerminal = useCallback((path: string) => {
-    vscode.postMessage({ type: 'fs.cdTerminal', path });
-    terminal.current?.focus();
-  }, []);
+  const cdInTerminal = (path: string) => {
+    vscode.postMessage({ type: 'fs.cdTerminal', path, term: activeTerm });
+    handles.current.get(activeTerm)?.focus();
+  };
 
   return (
     <div className="session-page">
       <section className="terminal-pane">
         <StatusBar {...status} onReconnect={() => vscode.postMessage({ type: 'reconnect' })} />
-        <TerminalView ref={terminal} fontSize={config.terminalFontSize || 13} />
+        <TerminalTabs ids={terms} active={activeTerm} onSelect={setActiveTerm} onClose={closeTerminal} onNew={newTerminal} />
+        {terms.map((id) => (
+          <TerminalView
+            key={id}
+            id={id}
+            active={id === activeTerm}
+            fontSize={config.terminalFontSize || 13}
+            ref={(h) => {
+              if (h) handles.current.set(id, h);
+              else handles.current.delete(id);
+            }}
+          />
+        ))}
       </section>
       <div className="splitter" onMouseDown={startDrag} />
       <FileBrowser style={{ width }} onCdTerminal={cdInTerminal} />
