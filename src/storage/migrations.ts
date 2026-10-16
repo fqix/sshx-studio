@@ -57,6 +57,17 @@ const MIGRATIONS: string[] = [
   DROP TABLE port_forwards;
   ALTER TABLE port_forwards_new RENAME TO port_forwards;
   CREATE INDEX port_forwards_host ON port_forwards(host_id)`,
+  /* 4: host groups (folders in the tree), nestable. Deleting a group moves its hosts up (see GroupRepository.delete). */ `
+  CREATE TABLE host_groups (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    -- NULL = top level
+    parent_id  INTEGER REFERENCES host_groups(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL
+  );
+  CREATE UNIQUE INDEX host_groups_name ON host_groups(IFNULL(parent_id, 0), name COLLATE NOCASE);
+  ALTER TABLE hosts ADD COLUMN group_id INTEGER REFERENCES host_groups(id) ON DELETE SET NULL;
+  CREATE INDEX hosts_group ON hosts(group_id)`,
 ];
 
 /** Bring the schema up to date inside the caller's transaction. */

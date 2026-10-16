@@ -144,12 +144,13 @@ export function createMockHost() {
             state: {
               draft: {
                 id: 1, alias: 'prod-web', hostname: '10.0.0.5', port: 22, username: 'deploy', authMethod: 'keyStored',
-                identityFile: '', proxyJump: 'bastion', proxyCommand: '', password: '', clearPassword: false,
+                identityFile: '', proxyJump: 'bastion', proxyCommand: '', groupId: 2, password: '', clearPassword: false,
                 privateKey: '', passphrase: '', clearPassphrase: false, forwardAgent: true, forwardX11: false,
               },
               saved: { password: true, privateKey: true, passphrase: false },
               publicKey: DEMO ? 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOWnOOGFYPqL/ibF51BhDkqQAoHsMR5+N7lg46gnyl8h sshx-studio@macbook' : 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockMockMockMockMockMockMockMockMockMockMo sshx-studio@dev',
               otherAliases: ['bastion', 'db', 'staging'],
+              groups: [{ id: 1, path: 'Production' }, { id: 2, path: 'Production / Web' }, { id: 3, path: 'Staging' }],
             },
           });
           break;

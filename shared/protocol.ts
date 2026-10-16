@@ -55,6 +55,8 @@ export interface HostDraft {
   identityFile: string;
   proxyJump: string;
   proxyCommand: string;
+  /** Group (tree folder); null = top level. */
+  groupId: number | null;
   password: string;
   clearPassword: boolean;
   /** Pasted private key (keyStored). */
@@ -75,6 +77,8 @@ export interface HostEditorState {
   publicKey: string;
   /** Other hosts' aliases (for the ProxyJump picker). */
   otherAliases: string[];
+  /** Every group, with its full "Parent / Child" path, sorted by path. */
+  groups: { id: number; path: string }[];
 }
 
 export type HostDraftField = keyof HostDraft;

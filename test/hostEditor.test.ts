@@ -9,6 +9,7 @@ import { testConnection } from '../src/hosts/connectionTester';
 import { emptyDraft, HostService, ValidationError } from '../src/hosts/hostService';
 import type { Prompter } from '../src/ssh/types';
 import { AppDatabase } from '../src/storage/database';
+import { GroupRepository } from '../src/storage/groupRepository';
 import { HostRepository } from '../src/storage/hostRepository';
 import { HostSecretStore, SecretBackend } from '../src/storage/secretStore';
 
@@ -22,7 +23,8 @@ export async function hostEditorTests(cfg: SshConfig, port: number, prompter: Pr
     store: async (k, v) => void stored.set(k, v),
     delete: async (k) => void stored.delete(k),
   };
-  const service = new HostService(hosts, new HostSecretStore(backend));
+  const groups = new GroupRepository(db);
+  const service = new HostService(hosts, new HostSecretStore(backend), groups);
   const knownHosts = cfg.resolve('direct').knownHostsFile;
 
   const draft = (patch: Partial<HostDraft>): HostDraft => ({ ...emptyDraft(), hostname: '127.0.0.1', port, username: 'u', ...patch });
@@ -50,6 +52,16 @@ export async function hostEditorTests(cfg: SshConfig, port: number, prompter: Pr
   const saved = await service.save(draft({ alias: 'saved', authMethod: 'password', password: 'pw' }));
   const again = await testConnection(await preview(draft({ id: saved.id, alias: 'saved', authMethod: 'password', password: '' })), cfg, noPrompt);
   assert.ok(again.ok, again.message);
+
+  // Group: a new host from a group's menu starts there; the choice is saved; a vanished group is refused.
+  const team = await groups.insert('Team', null);
+  const fresh = await service.editorState(undefined, team.id);
+  assert.strictEqual(fresh.draft.groupId, team.id);
+  assert.deepStrictEqual(fresh.groups, [{ id: team.id, path: 'Team' }]);
+  const grouped = await service.save(draft({ alias: 'grouped', groupId: team.id }));
+  assert.strictEqual(grouped.groupId, team.id);
+  assert.strictEqual((await service.editorState(grouped.id)).draft.groupId, team.id);
+  await assert.rejects(service.save(draft({ alias: 'orphan', groupId: 9999 })), (e: unknown) => e instanceof ValidationError && e.field === 'groupId');
 
   await db.close();
   fs.rmSync(tmp, { recursive: true, force: true });

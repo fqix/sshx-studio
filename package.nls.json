@@ -24,5 +24,9 @@
   "config.databasePath": "Local SQLite database for hosts and port forwards. Empty = `~/.sshx-studio/sshx.db`. Passwords and private keys are never stored here (they go to the system credential store).",
   "config.configPath": "SSH config file to import hosts from (automatically on first run, or with *Import from SSH Config*). Empty = `~/.ssh/config`.",
   "config.terminalFontSize": "Terminal font size in session tabs.",
-  "cmd.uploadFromExplorer": "Upload to SSH Host…"
+  "cmd.uploadFromExplorer": "Upload to SSH Host…",
+  "cmd.addGroup": "New Group",
+  "cmd.renameGroup": "Rename Group",
+  "cmd.deleteGroup": "Delete Group",
+  "cmd.moveToGroup": "Move to Group…"
 }

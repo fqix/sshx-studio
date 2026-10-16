@@ -27,6 +27,7 @@ export function hostsFromSshConfig(config: SshConfig): NewHost[] {
       proxyCommand: opts.verbatim('proxycommand') ?? '',
       options,
       source: 'ssh-config',
+      groupId: null,
     };
   });
 }

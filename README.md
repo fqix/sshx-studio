@@ -39,6 +39,7 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that �
 **Hosts and credentials**
 - Imports your `~/.ssh/config` on first run (including `Include`, wildcards, `ProxyJump`, `LocalForward`, …). Your config file is never modified.
 - Add and edit hosts in a form, with **Test connection** before saving.
+- Organize hosts into nested groups; drag hosts between them.
 - Authenticate with your SSH agent, a key file, a password, or a key kept in the system credential store — paste one or generate an Ed25519 / RSA key pair.
 - Passwords and keys live in the system credential store (macOS Keychain, Windows Credential Manager, libsecret on Linux), never in plain files.
 

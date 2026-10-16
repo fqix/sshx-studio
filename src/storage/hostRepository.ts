@@ -3,10 +3,10 @@ import type { AppDatabase, Row, Tx } from './database';
 import type { HostRecord, NewHost } from './types';
 
 const COLUMNS = `id, alias, hostname, port, username, auth_method, identity_file, public_key,
-  proxy_jump, proxy_command, options, source, created_at, updated_at`;
+  proxy_jump, proxy_command, options, source, group_id, created_at, updated_at`;
 const INSERT = `INSERT INTO hosts (alias, hostname, port, username, auth_method, identity_file, public_key,
-  proxy_jump, proxy_command, options, source, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  proxy_jump, proxy_command, options, group_id, source, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
 /** CRUD for the `hosts` table plus the `meta` key/value table. */
 export class HostRepository {
@@ -53,7 +53,7 @@ export class HostRepository {
     await this.db.transaction((tx) =>
       tx.run(
         `UPDATE hosts SET alias = ?, hostname = ?, port = ?, username = ?, auth_method = ?, identity_file = ?,
-           public_key = ?, proxy_jump = ?, proxy_command = ?, options = ?, updated_at = ?
+           public_key = ?, proxy_jump = ?, proxy_command = ?, options = ?, group_id = ?, updated_at = ?
          WHERE id = ?`,
         [...toParams(host), Date.now(), id],
       ),
@@ -63,6 +63,13 @@ export class HostRepository {
 
   async delete(id: number): Promise<void> {
     await this.db.transaction((tx) => tx.run('DELETE FROM hosts WHERE id = ?', [id]));
+  }
+
+  /** Move hosts into a group (null = top level). */
+  async moveToGroup(ids: number[], groupId: number | null): Promise<void> {
+    await this.db.transaction((tx) => {
+      for (const id of ids) tx.run('UPDATE hosts SET group_id = ?, updated_at = ? WHERE id = ?', [groupId, Date.now(), id]);
+    });
   }
 
   async getMeta(key: string): Promise<string | undefined> {
@@ -82,7 +89,7 @@ function insertRow(tx: Tx, h: NewHost) {
 }
 
 function toParams(h: Omit<NewHost, 'source'>) {
-  return [h.alias, h.hostname, h.port, h.username, h.authMethod, h.identityFile, h.publicKey, h.proxyJump, h.proxyCommand, JSON.stringify(h.options ?? {})];
+  return [h.alias, h.hostname, h.port, h.username, h.authMethod, h.identityFile, h.publicKey, h.proxyJump, h.proxyCommand, JSON.stringify(h.options ?? {}), h.groupId ?? null];
 }
 
 function toRecord(r: Row): HostRecord {
@@ -99,6 +106,7 @@ function toRecord(r: Row): HostRecord {
     proxyCommand: String(r.proxy_command),
     options: JSON.parse(String(r.options)),
     source: r.source as HostRecord['source'],
+    groupId: r.group_id === null ? null : Number(r.group_id),
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
   };

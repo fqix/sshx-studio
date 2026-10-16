@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Host groups: organize hosts into nestable folders in the tree. Create, rename and delete groups, move hosts and groups by drag and drop or **Move to Group…**, and pick the group in the host editor. Deleting a group keeps its hosts.
+
 ## [0.2.0] - 2026-10-13
 
 ### Fixed

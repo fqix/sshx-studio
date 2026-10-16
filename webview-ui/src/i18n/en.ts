@@ -46,6 +46,8 @@ export const en = {
   'editor.port': 'Port',
   'editor.username': 'User',
   'editor.usernamePlaceholder': 'Current user',
+  'editor.group': 'Group',
+  'editor.noGroup': '(none — top level)',
   'editor.auth': 'Authentication',
   'auth.auto': 'Automatic',
   'auth.password': 'Password',

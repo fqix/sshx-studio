@@ -9,6 +9,7 @@ import { SessionRegistry } from './session/sessionRegistry';
 import { AppDatabase } from './storage/database';
 import { databasePath, sshConfigPath } from './storage/databasePath';
 import { ForwardRepository } from './storage/forwardRepository';
+import { GroupRepository } from './storage/groupRepository';
 import { HostRepository } from './storage/hostRepository';
 import { DatabaseHostResolver } from './storage/hostResolver';
 import { HostSecretStore } from './storage/secretStore';
@@ -24,6 +25,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
   const db = await AppDatabase.open(databasePath());
   ctx.subscriptions.push({ dispose: () => void db.close() });
   const hosts = new HostRepository(db);
+  const groups = new GroupRepository(db);
   const forwards = new ForwardRepository(db);
   const secrets = new HostSecretStore(ctx.secrets);
   output.appendLine(`database: ${databasePath()}`);
@@ -40,15 +42,15 @@ export async function activate(ctx: vscode.ExtensionContext) {
   const sessions = new SessionRegistry(ctx.extensionUri, resolver, newPromptSession, output);
 
   // UI
-  const tree = new HostTreeProvider(hosts, forwards, forwardManager);
-  const hostService = new HostService(hosts, secrets);
+  const tree = new HostTreeProvider(hosts, groups, forwards, forwardManager);
+  const hostService = new HostService(hosts, secrets, groups);
 
   ctx.subscriptions.push(
     sessions,
     tree,
     { dispose: () => forwardManager.dispose() },
-    vscode.window.registerTreeDataProvider(HOSTS_VIEW, tree),
-    ...registerCommands({ extensionUri: ctx.extensionUri, output, hosts, forwards, hostService, resolver, newPromptSession, forwardManager, sessions, tree }),
+    vscode.window.createTreeView(HOSTS_VIEW, { treeDataProvider: tree, dragAndDropController: tree, canSelectMany: true }),
+    ...registerCommands({ extensionUri: ctx.extensionUri, output, hosts, groups, forwards, hostService, resolver, newPromptSession, forwardManager, sessions, tree }),
   );
 
   // Auto-start forwards in the background.
@@ -58,7 +60,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
   }
 
   // Internal handles for integration tests (not a public API).
-  return { hosts, forwards, forwardManager, sessions };
+  return { hosts, groups, forwards, forwardManager, sessions };
 }
 
 export function deactivate() {}

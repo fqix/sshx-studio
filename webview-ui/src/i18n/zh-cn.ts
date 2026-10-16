@@ -45,6 +45,8 @@ export const zhCn: Record<MessageKey, string> = {
   'editor.port': '端口',
   'editor.username': '用户',
   'editor.usernamePlaceholder': '当前用户',
+  'editor.group': '分组',
+  'editor.noGroup': '（无 — 顶层）',
   'editor.auth': '认证方式',
   'auth.auto': '自动',
   'auth.password': '密码',

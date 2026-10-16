@@ -24,5 +24,9 @@
   "config.databasePath": "保存主机和端口转发的本地 SQLite 数据库。留空则为 `~/.sshx-studio/sshx.db`。密码和私钥不会存入数据库（保存在系统凭据存储中）。",
   "config.configPath": "用于导入主机的 SSH config 文件（首次运行时自动导入，或通过“从 SSH Config 导入”手动导入）。留空则为 `~/.ssh/config`。",
   "config.terminalFontSize": "会话标签页中终端的字体大小。",
-  "cmd.uploadFromExplorer": "上传到 SSH 主机…"
+  "cmd.uploadFromExplorer": "上传到 SSH 主机…",
+  "cmd.addGroup": "新建分组",
+  "cmd.renameGroup": "重命名分组",
+  "cmd.deleteGroup": "删除分组",
+  "cmd.moveToGroup": "移动到分组…"
 }

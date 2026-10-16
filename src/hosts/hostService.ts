@@ -5,6 +5,7 @@ import { resolveRecord } from '../storage/hostResolver';
 import { expandHome } from '../config/tokens';
 import { t } from '../i18n';
 import { inspectPrivateKey, KeyPair } from '../ssh/keygen';
+import { groupPaths, type GroupRepository } from '../storage/groupRepository';
 import type { HostRepository } from '../storage/hostRepository';
 import type { HostSecretStore } from '../storage/secretStore';
 import type { HostRecord } from '../storage/types';
@@ -25,12 +26,19 @@ export class HostService {
   constructor(
     private readonly hosts: HostRepository,
     private readonly secrets: HostSecretStore,
+    private readonly groups: GroupRepository,
   ) {}
 
-  async editorState(id?: number): Promise<HostEditorState> {
+  /** `newGroupId` is the group a new host starts in. */
+  async editorState(id?: number, newGroupId?: number): Promise<HostEditorState> {
     const record = id === undefined ? undefined : await this.hosts.findById(id);
     const otherAliases = (await this.hosts.list()).filter((h) => h.id !== id).map((h) => h.alias);
-    if (!record) return { draft: emptyDraft(), saved: { password: false, privateKey: false, passphrase: false }, publicKey: '', otherAliases };
+    const paths = groupPaths(await this.groups.list());
+    const groups = [...paths].map(([gid, path]) => ({ id: gid, path })).sort((a, b) => a.path.localeCompare(b.path));
+    if (!record) {
+      const groupId = newGroupId !== undefined && paths.has(newGroupId) ? newGroupId : null;
+      return { draft: { ...emptyDraft(), groupId }, saved: { password: false, privateKey: false, passphrase: false }, publicKey: '', otherAliases, groups };
+    }
     const s = await this.secrets.load(record.id);
     return {
       draft: {
@@ -42,6 +50,7 @@ export class HostService {
       saved: { password: !!s.password, privateKey: !!s.privateKey, passphrase: !!s.passphrase },
       publicKey: record.publicKey,
       otherAliases,
+      groups,
     };
   }
 
@@ -109,6 +118,7 @@ export class HostService {
       publicKey,
       proxyJump: d.proxyJump,
       proxyCommand: d.proxyCommand,
+      groupId: d.groupId,
       options: withFlags(existing?.options ?? {}, { forwardagent: d.forwardAgent, forwardx11: d.forwardX11 }),
     };
     const effective = <T>(change: T | null | undefined, saved: T | undefined) => (change === null ? undefined : change ?? saved);
@@ -149,6 +159,9 @@ export class HostService {
       if (!fs.existsSync(expandHome(d.identityFile))) throw new ValidationError(t('File not found: {0}', d.identityFile), 'identityFile');
     }
     if (d.proxyJump && d.proxyCommand) throw new ValidationError(t('Use either ProxyJump or ProxyCommand, not both.'), 'proxyJump');
+    if (mode === 'save' && d.groupId !== null && !(await this.groups.findById(d.groupId))) {
+      throw new ValidationError(t('That group no longer exists.'), 'groupId');
+    }
   }
 }
 
@@ -162,6 +175,7 @@ export function emptyDraft(): HostDraft {
     identityFile: '',
     proxyJump: '',
     proxyCommand: '',
+    groupId: null,
     password: '',
     clearPassword: false,
     privateKey: '',
@@ -196,6 +210,7 @@ function pick(r: HostRecord): Partial<HostDraft> {
     identityFile: r.identityFile,
     proxyJump: r.proxyJump,
     proxyCommand: r.proxyCommand,
+    groupId: r.groupId,
   };
 }
 
@@ -210,6 +225,7 @@ function normalize(d: HostDraft): HostDraft {
     identityFile: trim(d.identityFile),
     proxyJump: trim(d.proxyJump),
     proxyCommand: trim(d.proxyCommand),
+    groupId: d.groupId ?? null,
     privateKey: trim(d.privateKey) ? trim(d.privateKey) + '\n' : '',
   };
 }

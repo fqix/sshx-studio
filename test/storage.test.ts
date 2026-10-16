@@ -6,6 +6,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { AppDatabase } from '../src/storage/database';
 import { ForwardRepository } from '../src/storage/forwardRepository';
+import { GroupError, GroupRepository, groupPaths } from '../src/storage/groupRepository';
 import { HostRepository } from '../src/storage/hostRepository';
 import { resolveRecord } from '../src/storage/hostResolver';
 import { importOnFirstRun, importSshConfig } from '../src/storage/sshConfigImporter';
@@ -110,6 +111,32 @@ Host *
   await assert.rejects(hosts.insert({ ...web, alias: 'bastion', source: 'manual' }), /UNIQUE/);
   assert.strictEqual((await hosts.list()).length, 4);
 
+  // Groups: nesting, unique names per parent, no cycles, deleting keeps the hosts.
+  const groups = new GroupRepository(db);
+  const prod = await groups.insert('Prod', null);
+  const prodWeb = await groups.insert('Web', prod.id);
+  await groups.insert('Web', null); // same name, different parent
+  await assert.rejects(groups.insert('web', prod.id), (e: unknown) => e instanceof GroupError && e.reason === 'exists');
+  assert.strictEqual(groupPaths(await groups.list()).get(prodWeb.id), 'Prod / Web');
+  await assert.rejects(groups.move(prod.id, prodWeb.id), (e: unknown) => e instanceof GroupError && e.reason === 'cycle');
+  await assert.rejects(groups.move(prod.id, prod.id), (e: unknown) => e instanceof GroupError && e.reason === 'cycle');
+  const w1 = (await hosts.findByAlias('from-window-1'))!;
+  const w2 = (await hosts.findByAlias('from-window-2'))!;
+  await hosts.moveToGroup([w1.id], prodWeb.id);
+  await hosts.moveToGroup([w2.id], prod.id);
+  assert.strictEqual((await hosts2.findById(w1.id))!.groupId, prodWeb.id, 'other window sees the move');
+  await hosts.update(w2.id, { ...w2, groupId: prod.id, port: 2200 });
+  assert.strictEqual((await hosts.findById(w2.id))!.groupId, prod.id, 'update keeps the group');
+  await groups.rename(prodWeb.id, 'Frontend');
+  await groups.delete(prod.id);
+  assert.deepStrictEqual((await groups.list()).map((g) => g.name), ['Web'], 'subgroups deleted with their parent');
+  assert.strictEqual((await hosts.findById(w1.id))!.groupId, null, 'hosts of a deleted subgroup move to the top level');
+  assert.strictEqual((await hosts.findById(w2.id))!.groupId, null);
+  const nested = await groups.insert('Inner', (await groups.insert('Outer', null)).id);
+  await hosts.moveToGroup([w1.id], nested.id);
+  await groups.delete(nested.id);
+  assert.strictEqual((await hosts.findById(w1.id))!.groupId, nested.parentId, 'hosts move to the parent group');
+
   // Deleting a host cascades to its forwards; data survives reopen.
   await hosts2.delete(web.id);
   assert.strictEqual((await forwards.listForHost(web.id)).length, 0, 'forwards cascade-deleted');
@@ -120,5 +147,5 @@ Host *
   await db3.close();
 
   fs.rmSync(tmp, { recursive: true, force: true });
-  console.log('ok  storage: import, CRUD, two windows, rollback, cascade, persistence');
+  console.log('ok  storage: import, CRUD, groups, two windows, rollback, cascade, persistence');
 }

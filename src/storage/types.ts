@@ -16,8 +16,18 @@ export interface HostRecord {
   /** Remaining ssh_config options, lowercase keyword → verbatim value. */
   options: Record<string, string>;
   source: 'manual' | 'ssh-config';
+  /** Group (tree folder) the host is in; null = top level. */
+  groupId: number | null;
   createdAt: number;
   updatedAt: number;
 }
 
 export type NewHost = Omit<HostRecord, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** A row of the `host_groups` table: a folder in the host tree. */
+export interface GroupRecord {
+  id: number;
+  name: string;
+  /** null = top level */
+  parentId: number | null;
+}
