@@ -55,7 +55,7 @@ export function SessionPage({ config }: { config: WebviewConfig }) {
     <div className="session-page">
       <section className="terminal-pane">
         <StatusBar {...status} onReconnect={() => vscode.postMessage({ type: 'reconnect' })} />
-        <TerminalTabs ids={terms} active={activeTerm} onSelect={setActiveTerm} onClose={closeTerminal} onNew={newTerminal} />
+        <TerminalTabs ids={terms} active={activeTerm} onSelect={setActiveTerm} onClose={closeTerminal} onNew={newTerminal} onSearch={() => handles.current.get(activeTerm)?.openSearch()} />
         {terms.map((id) => (
           <TerminalView
             key={id}

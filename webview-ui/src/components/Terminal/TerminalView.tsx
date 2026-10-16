@@ -1,13 +1,19 @@
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useHostMessage } from '../../hooks/useHostMessage';
 import { vscode } from '../../vscode/api';
+import { TerminalSearch } from './TerminalSearch';
 import './TerminalView.css';
 
 export interface TerminalHandle {
   focus(): void;
+  /** Show the find widget (Cmd/Ctrl+F in the terminal does the same). */
+  openSearch(): void;
 }
+
+const isMac = navigator.platform.toUpperCase().includes('MAC');
 
 interface Props {
   /** Terminal id, chosen by the page; the host keys the shell channel by it. */
@@ -43,14 +49,25 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal>();
   const fitRef = useRef<FitAddon>();
+  const [search, setSearch] = useState<SearchAddon>();
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  useImperativeHandle(ref, () => ({ focus: () => termRef.current?.focus() }), []);
+  useImperativeHandle(ref, () => ({ focus: () => termRef.current?.focus(), openSearch: () => setSearchOpen(true) }), []);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    termRef.current?.focus();
+  };
 
   useEffect(() => {
     const { fontFamily, theme } = themeFromVsCode();
-    const term = new Terminal({ fontSize, fontFamily, theme, cursorBlink: true, scrollback: 10000 });
+    // allowProposedApi: the search addon's match highlighting uses decorations.
+    const term = new Terminal({ fontSize, fontFamily, theme, cursorBlink: true, scrollback: 10000, allowProposedApi: true });
     const fit = new FitAddon();
+    const searchAddon = new SearchAddon();
     term.loadAddon(fit);
+    term.loadAddon(searchAddon);
+    setSearch(searchAddon);
     term.open(containerRef.current!);
     termRef.current = term;
     fitRef.current = fit;
@@ -63,6 +80,12 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === 'keydown' && (e.metaKey || e.ctrlKey) && e.key === 'c' && term.hasSelection()) {
         navigator.clipboard.writeText(term.getSelection());
+        return false;
+      }
+      // Cmd+F on macOS, Ctrl+F elsewhere (as in VS Code's terminal): find instead of sending ^F.
+      if (e.type === 'keydown' && e.key.toLowerCase() === 'f' && (isMac ? e.metaKey : e.ctrlKey) && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        setSearchOpen(true);
         return false;
       }
       return true;
@@ -131,5 +154,10 @@ export const TerminalView = forwardRef<TerminalHandle, Props>(function TerminalV
     }
   });
 
-  return <div className={'terminal-view' + (active ? '' : ' hidden')} ref={containerRef} />;
+  return (
+    <div className={'terminal-wrap' + (active ? '' : ' hidden')}>
+      <div className="terminal-view" ref={containerRef} />
+      {searchOpen && search && <TerminalSearch search={search} onClose={closeSearch} />}
+    </div>
+  );
 });

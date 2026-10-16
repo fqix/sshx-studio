@@ -7,10 +7,11 @@ interface Props {
   onSelect(id: number): void;
   onClose(id: number): void;
   onNew(): void;
+  onSearch(): void;
 }
 
 /** Terminals of this session tab; each is its own shell on the shared connection. */
-export function TerminalTabs({ ids, active, onSelect, onClose, onNew }: Props) {
+export function TerminalTabs({ ids, active, onSelect, onClose, onNew, onSearch }: Props) {
   return (
     <div className="terminal-tabs" role="tablist">
       {ids.map((id) => (
@@ -33,6 +34,10 @@ export function TerminalTabs({ ids, active, onSelect, onClose, onNew }: Props) {
       ))}
       <button className="new" title={t('session.newTerminal')} onClick={onNew}>
         <i className="codicon codicon-add" aria-hidden="true" />
+      </button>
+      <span className="spacer" />
+      <button className="search" title={t('search.open', navigator.platform.toUpperCase().includes('MAC') ? '⌘F' : 'Ctrl+F')} onClick={onSearch}>
+        <i className="codicon codicon-search" aria-hidden="true" />
       </button>
     </div>
   );

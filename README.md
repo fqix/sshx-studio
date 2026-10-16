@@ -27,6 +27,7 @@ Remote - SSH turns VS Code into a remote workspace. Often you don't want that �
 
 **Terminal and files together**
 - A full xterm.js terminal and an SFTP file browser in the same tab, with a resizable split.
+- Find in the terminal (⌘F / Ctrl+F), with case, whole-word and regex options.
 - Several terminals per tab on one connection, or duplicate the session into a new tab.
 - Browse, rename, delete, create folders, `cd` the terminal into any folder.
 - Double-click a file to edit it in VS Code — saving uploads it back.

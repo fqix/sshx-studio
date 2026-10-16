@@ -39,3 +39,5 @@
 .terminal-tab:hover .close,
 .terminal-tab.active .close { visibility: visible; }
 .terminal-tabs .new { margin: 0 4px; align-self: center; }
+.terminal-tabs .spacer { flex: 1; }
+.terminal-tabs .search { margin: 0 6px; align-self: center; }
